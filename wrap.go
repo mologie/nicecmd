@@ -5,6 +5,8 @@ import (
 	"os"
 )
 
+var osExitOrTestHook = os.Exit
+
 type RunE[T comparable] func(cfg T, cmd *cobra.Command, args []string) error
 
 type RunFuncs[T comparable] struct {
@@ -54,10 +56,10 @@ func Command[T comparable](envPrefix string, run RunFuncs[T], cmd cobra.Command,
 	}
 
 	if BindConfig(envPrefix, &cmd, &cfg) {
-	return &cmd
+		return &cmd
 	} else {
 		_ = cmd.Usage()
-		os.Exit(1)
+		osExitOrTestHook(1)
 		return nil
 	}
 }
