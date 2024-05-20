@@ -198,7 +198,7 @@ Contributions
 
 I welcome contributions to this project, but may reject contributions that don't fit its spirit:
 
-1. This is a rather opinionated library that build on top of Cobra. It does not follow Cobra defaults exactly. If you just need to customize something, then interacting with Cobra or changing its settings directly is usually the way to go.
+1. This is a rather opinionated library built on top of Cobra. It does not follow Cobra's defaults and conventions. If you need to customize something, then interacting with Cobra or changing its settings directly is usually the way to go.
 2. The library should remain minimal. I will reject contributions that add dependencies. (The stdlib is mostly fine.)
 3. I would treat this project like `go fmt`: If something looks off or is awkward to use, then that's a bug too. NiceCmd should after all make your command line code nice.
 4. Contributions that come with code must come with tests.
