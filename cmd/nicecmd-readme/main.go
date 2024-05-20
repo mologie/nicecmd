@@ -7,7 +7,7 @@ import (
 )
 
 type Config struct {
-	Name    string `usage:"your name"`
+	Name    string `flag:"required" usage:"person to greet"`
 	Weather string `param:"w" usage:"how's the weather?"`
 }
 

@@ -21,7 +21,7 @@ import (
 )
 
 type Config struct {
-	Name    string `usage:"your name"`
+	Name    string `flag:"required" usage:"person to greet"`
 	Weather string `param:"w" usage:"how's the weather?"`
 }
 
@@ -52,7 +52,7 @@ Usage:
 
 Flags:
   -h, --help             help for nicecmd-example
-      --name string      your name (required) (env HELLO_NAME)
+      --name string      person to greet (required) (env HELLO_NAME)
   -w, --weather string   how's the weather? (env HELLO_WEATHER) (default "nice")
 ```
 
