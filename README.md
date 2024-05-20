@@ -56,6 +56,11 @@ Flags:
   -w, --weather string   how's the weather? (env HELLO_WEATHER) (default "nice")
 ```
 
+A more complete example with a sub-command is available in [cmd/nicecmd-fizzbuzz](cmd/nicecmd-fizzbuzz).
+Additionally, [reflect_test.go](reflect_test.go) and the documentation of
+[Cobra](https://pkg.go.dev/github.com/spf13/cobra) and
+[pflag](https://pkg.go.dev/github.com/spf13/pflag) will be useful for more complex CLI tools.
+
 Principles and Patterns
 -----------------------
 
