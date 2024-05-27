@@ -20,6 +20,7 @@ type AllTypesConfig struct {
 	BytesBase64    []byte            `expect:"--bytes-hex bytesHex * (env TEST_BYTES_HEX)" usage:"*" encoding:"base64"`
 	Int            int               `expect:"-i, --integer int * (env TESTINTEGER)" usage:"*" param:"integer,i" env:"TESTINTEGER"`
 	IntCount       int               `expect:"--int-count count *" usage:"*" encoding:"count" env:"-"`
+	Ints           []int             `expect:"--ints ints * (env TEST_INTS)" usage:"*"` // NB: inconsistent usage, special treatment happens in pflag/flag.go
 	Int8           int8              `expect:"--int8 int8 * (env TEST_INT8)" usage:"*"`
 	Int16          int16             `expect:"--int16 int16 * (env TEST_INT16)" usage:"*"`
 	Int32          int32             `expect:"--int32 int32 * (env TEST_INT32)" usage:"*"`

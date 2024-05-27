@@ -114,6 +114,8 @@ func recurseStruct(paramPrefix, envPrefix string, parentOpts fieldOpts,
 			default:
 				panic(fmt.Sprintf(`expected no encoding or encoding:"count" for int %q, got encoding %q`, tags.name, tags.encoding))
 			}
+		case *[]int:
+			fs.IntSliceVarP(p, tags.name, tags.abbrev, *p, tags.usage)
 		case *int8:
 			fs.Int8VarP(p, tags.name, tags.abbrev, *p, tags.usage)
 		case *int16:
