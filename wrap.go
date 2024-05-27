@@ -7,9 +7,9 @@ import (
 
 var osExitOrTestHook = os.Exit
 
-type RunE[T comparable] func(cfg T, cmd *cobra.Command, args []string) error
+type RunE[T any] func(cfg T, cmd *cobra.Command, args []string) error
 
-type RunFuncs[T comparable] struct {
+type RunFuncs[T any] struct {
 	PersistentPreRun  RunE[T]
 	PreRun            RunE[T]
 	Run               RunE[T]
@@ -24,16 +24,16 @@ func init() {
 }
 
 // PersistentPreRun is a convenience function to create a RunFuncs with only the PersistentPreRun function set.
-func PersistentPreRun[T comparable](f func(cfg T, cmd *cobra.Command, args []string) error) RunFuncs[T] {
+func PersistentPreRun[T any](f func(cfg T, cmd *cobra.Command, args []string) error) RunFuncs[T] {
 	return RunFuncs[T]{PersistentPreRun: f}
 }
 
 // Run is a convenience function to create a RunFuncs with only the Run function set.
-func Run[T comparable](f func(cfg T, cmd *cobra.Command, args []string) error) RunFuncs[T] {
+func Run[T any](f func(cfg T, cmd *cobra.Command, args []string) error) RunFuncs[T] {
 	return RunFuncs[T]{Run: f}
 }
 
-func Command[T comparable](envPrefix string, run RunFuncs[T], cmd cobra.Command, cfg T) *cobra.Command {
+func Command[T any](envPrefix string, run RunFuncs[T], cmd cobra.Command, cfg T) *cobra.Command {
 	cmd.PersistentPreRunE = passCfg(&cfg, run.PersistentPreRun)
 	cmd.PreRunE = passCfg(&cfg, run.PreRun)
 	cmd.RunE = passCfg(&cfg, run.Run)
@@ -64,7 +64,7 @@ func Command[T comparable](envPrefix string, run RunFuncs[T], cmd cobra.Command,
 	}
 }
 
-func passCfg[T comparable](cfg *T, f RunE[T]) func(cmd *cobra.Command, args []string) error {
+func passCfg[T any](cfg *T, f RunE[T]) func(cmd *cobra.Command, args []string) error {
 	if f != nil {
 		return func(cmd *cobra.Command, args []string) error {
 			return f(*cfg, cmd, args)

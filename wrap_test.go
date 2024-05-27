@@ -14,6 +14,7 @@ import (
 
 type TrivialConf struct {
 	Foo string
+	Bar []int
 }
 
 func trivialRun(cfg TrivialConf, cmd *cobra.Command, args []string) error {
