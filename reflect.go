@@ -35,34 +35,50 @@ const (
 	encodingRaw    = "raw"
 )
 
+type config struct {
+	EnvPrefix string
+}
+
+type Option func(*config)
+
+// WithEnvPrefix sets a prefix to prepend to env vars, separated by an underscore. For sub-structs,
+// the prefix is further extended with the screaming snake case of the field name under which the
+// struct is embedded.
+func WithEnvPrefix(prefix string) Option {
+	if prefix == "" {
+		panic("env prefix must not be empty")
+	}
+	if strings.ToUpper(prefix) != prefix {
+		panic("env prefix must be all uppercase")
+	}
+	if strings.HasSuffix(prefix, "_") {
+		panic("env prefix must not end with an underscore, it is added automatically")
+	}
+	return func(cfg *config) {
+		cfg.EnvPrefix = prefix + "_"
+	}
+}
+
 // BindConfig maps fields of cfg to flag sets of cmd. A field's value is set with the following
 // precedence: Explicit flag, environment variable, then whatever is already set in cfg.
 //
 // Struct tags:
-// - flag: Set of the flags defined above, separated by commas.
-// - param: "foo,f" for --foo=bar or -f x. Defaults to kebab-case of field name without short name.
-// - encoding: Type-specific encoding, e.g. "base64" for []byte.
-// - env: Environment variable name, "-" for none, defaults to prefixed screaming snake case.
-// - usage: Flag usage string. Environment variable name is appended if set.
-//
-// The env prefix defaults to envPrefix + "_". For structs, the prefix is further extended with the
-// screaming snake case of the field name where the struct is embedded.
-func BindConfig(envPrefix string, cmd *cobra.Command, cfg any) bool {
-	if envPrefix != "" {
-		if strings.ToUpper(envPrefix) != envPrefix {
-			panic("envPrefix must be all uppercase")
-		}
-		if strings.HasSuffix(envPrefix, "_") {
-			panic("envPrefix must not end with an underscore, it is added automatically")
-		}
-		envPrefix += "_"
+//   - flag: Set of the flags defined above, separated by commas.
+//   - param: "foo,f" for --foo=bar or -f x. Defaults to kebab-case of field name, long opt only.
+//   - encoding: Type-specific encoding, e.g. "base64" for []byte.
+//   - env: Environment variable name, "-" for none, defaults to prefixed screaming snake case.
+//   - usage: Flag usage string. Environment variable name is appended if set.
+func BindConfig(cmd *cobra.Command, cfg any, opts ...Option) bool {
+	var bindCfg config
+	for _, opt := range opts {
+		opt(&bindCfg)
 	}
 	v := reflect.ValueOf(cfg)
 	if v.Kind() != reflect.Ptr || v.Elem().Kind() != reflect.Struct {
 		panic("cfg must be a struct pointer")
 	}
 	var fail bool
-	recurseStruct("", envPrefix, fieldOpts{}, cmd, v.Elem(), &fail)
+	recurseStruct("", bindCfg.EnvPrefix, fieldOpts{}, cmd, v.Elem(), &fail)
 	return !fail
 }
 

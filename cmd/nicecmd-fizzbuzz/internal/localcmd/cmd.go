@@ -14,10 +14,10 @@ type Config struct {
 	Limit int `usage:"stop fizzbuzzing at this number"`
 }
 
-func NewCommand() *cobra.Command {
-	return nicecmd.Command("FIZZLOCAL", nicecmd.Run(run), cobra.Command{
+func Create(parent *cobra.Command) *cobra.Command {
+	return nicecmd.SubCommand(parent, nicecmd.Run(run), cobra.Command{
 		Use:   "local [--limit <num>] [fizz text] [buzz text]",
-		Short: "fizz and buzz on the local console",
+		Short: "Fizz and buzz on the local console",
 		Args:  cobra.MaximumNArgs(2),
 	}, Config{
 		Limit: 100,
@@ -39,7 +39,7 @@ func run(cfg Config, cmd *cobra.Command, args []string) error {
 	fb.Emit(cmd.OutOrStdout(), cfg.Limit)
 
 	log.Info("local fizzbuzzer has completed",
-		slog.Duration("duration", time.Now().Sub(startTime)))
+		slog.Duration("duration", time.Since(startTime)))
 
 	return nil
 }
@@ -50,17 +50,16 @@ type FizzBuzzer struct {
 }
 
 func (fb *FizzBuzzer) Emit(w io.Writer, limit int) {
-	//goland:noinspection GoUnhandledErrorResult
 	for i := 1; i <= limit; i++ {
 		switch {
 		case i%15 == 0:
-			fmt.Fprintln(w, "FizzBuzz")
+			_, _ = fmt.Fprintln(w, fb.Fizz+fb.Buzz)
 		case i%3 == 0:
-			fmt.Fprintln(w, "Fizz")
+			_, _ = fmt.Fprintln(w, fb.Fizz)
 		case i%5 == 0:
-			fmt.Fprintln(w, "Buzz")
+			_, _ = fmt.Fprintln(w, fb.Buzz)
 		default:
-			fmt.Fprintln(w, i)
+			_, _ = fmt.Fprintln(w, i)
 		}
 	}
 }

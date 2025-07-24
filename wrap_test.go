@@ -26,7 +26,7 @@ func trivialRun(cfg TrivialConf, cmd *cobra.Command, args []string) error {
 }
 
 func TestCommand_Execute(t *testing.T) {
-	cmd := Command("TEST", Run(trivialRun), cobra.Command{Use: "test"}, TrivialConf{})
+	cmd := RootCommand(Run(trivialRun), cobra.Command{Use: "test"}, TrivialConf{})
 
 	if reflect.ValueOf(cmd.Args).Pointer() != reflect.ValueOf(cobra.NoArgs).Pointer() {
 		t.Errorf("expected cmd to accept no args, to validator %p", cmd.Args)
@@ -45,7 +45,7 @@ func TestCommand_Sub(t *testing.T) {
 		cmd.SetContext(context.WithValue(cmd.Context(), contextKey{}, cfg.Foo))
 		return nil
 	}
-	rootCmd := Command("TEST", PersistentPreRun(rootMain), cobra.Command{
+	rootCmd := RootCommand(Setup(rootMain), cobra.Command{
 		Use: "root",
 	}, TrivialConf{
 		Foo: "foo default",
@@ -70,7 +70,7 @@ func TestCommand_Sub(t *testing.T) {
 			return nil
 		}
 	}
-	rootCmd.AddCommand(Command("TEST", RunFuncs[SubConf]{
+	subCmd := SubCommand(rootCmd, Hooks[SubConf]{
 		PersistentPreRun:  subHook,
 		PreRun:            subHook,
 		Run:               subMain,
@@ -81,7 +81,12 @@ func TestCommand_Sub(t *testing.T) {
 		Args: cobra.ArbitraryArgs,
 	}, SubConf{
 		Bar: "bar default",
-	}))
+	})
+
+	subUsage := subCmd.UsageString()
+	if !strings.Contains(subUsage, "env ROOT_SUB_BAR") {
+		t.Errorf("expected sub-command usage to reference ROOT_SUB_BAR env var, got: %s", subUsage)
+	}
 
 	rootCmd.SetArgs([]string{"--foo", "foo", "sub", "--bar", "bar", "baz"})
 	if err := rootCmd.Execute(); err != nil {
@@ -100,7 +105,7 @@ func TestCommand_MissingUsage(t *testing.T) {
 			t.Errorf("unexpected panic: %v", r)
 		}
 	}()
-	Command("", Run(trivialRun), cobra.Command{}, TrivialConf{})
+	RootCommand(Run(trivialRun), cobra.Command{}, TrivialConf{})
 }
 
 func TestCommand_UsageAndExitOnBadConfig(t *testing.T) {
@@ -119,12 +124,9 @@ func TestCommand_UsageAndExitOnBadConfig(t *testing.T) {
 	}
 
 	buf := &bytes.Buffer{}
-	cmdTemplate := cobra.Command{Use: "test"}
+	cmdTemplate := cobra.Command{Use: "nicecmd-testcmd"}
 	cmdTemplate.SetOut(buf)
-	run := func(cfg EnvConfig, cmd *cobra.Command, args []string) error {
-		return nil
-	}
-	cmd := Command("NICECMD_TESTCMD", Run(run), cmdTemplate, EnvConfig{})
+	cmd := RootCommand(Hooks[EnvConfig]{}, cmdTemplate, EnvConfig{})
 	if cmd != nil {
 		t.Error("expected Command to fail")
 	}

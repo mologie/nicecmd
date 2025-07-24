@@ -26,8 +26,8 @@ type Config struct {
 }
 
 func main() {
-	cmd := nicecmd.Command("HELLO", nicecmd.Run(greet), cobra.Command{
-		Use:   "nicecmd-example --name <name> [-w <weather>]",
+	cmd := nicecmd.RootCommand(nicecmd.Run(greet), cobra.Command{
+		Use:   "nicecmd-readme --name <name> [-w <weather>]",
 		Short: "It's just Cobra, but with no binding/setup required!",
 	}, Config{
 		Weather: "nice",
@@ -48,12 +48,12 @@ func greet(cfg Config, cmd *cobra.Command, args []string) error {
 $ go run ./cmd/nicecmd-readme
 Error: required flag(s) "name" not set
 Usage:
-  nicecmd-example --name <name> [-w <weather>]
+  nicecmd-readme --name <name> [-w <weather>]
 
 Flags:
-  -h, --help             help for nicecmd-example
-      --name string      person to greet (required) (env HELLO_NAME)
-  -w, --weather string   how's the weather? (env HELLO_WEATHER) (default "nice")
+  -h, --help             help for nicecmd-readme
+      --name string      person to greet (required) (env NICECMD_README_NAME)
+  -w, --weather string   how's the weather? (env NICECMD_README_WEATHER) (default "nice")
 ```
 
 A more complete example with a sub-command is available in [cmd/nicecmd-fizzbuzz](cmd/nicecmd-fizzbuzz).
@@ -80,38 +80,30 @@ despite them being uninitialized.
 With `nicecmd` all configuration is in a struct, and you get an immutable copy of it to work with.
 This avoids global variables for parameters.
 
-You can further avoid having a global (sub)command variables by consolidating all `cmd.AddCommand`
-calls in `main`, or separate per-command-package `NewCommand` methods, whatever floats your boat.
-
 ### Sub-commands
 
-Use `AddCommand` on any `cobra.Command`, regardless of whether it was created through nicecmd or
-directly through Cobra. However, note that nicecmd will:
-
-* Set `EnableTraverseRunHooks`: Persistent pre-run hooks of parents are always run
-* Set `TraverseChildren`: Parameters of the config struct passed to such hooks are set
-* Set `DisableFlagsInUseLine`: Your `Use` line will appear as-is in docs
+`nicecmd.SubCommand` will prefix the command's env vars with the parent command's path.
 
 You should structure sub-commands so that any shared configuration is a local (or persistent for
 convenience) variable on the parent command. For example, a log level would be shared for the
 entire application.
 
 You however cannot access the configuration of a parent command in the sub-command! Instead, modify
-the command context from the pre-run hook, e.g. to inject a logger:
+the command context from the setup hook, e.g. to inject a logger:
 
 ```go
 type RootConfig struct { LogLevel string }
 type SubConfig struct {}
 
-rootCmd := nicecmd.Command("FOO", nicecmd.PersistentPreRun(setup), cobra.Command{
+rootCmd := nicecmd.RootCommand(nicecmd.Setup(setup), cobra.Command{
 	Use:   "foo [--log-level <level>] <command>"
 	Short: "Foo will fizz your buzz"
 }, RootConfig{})
 
-rootCmd.AddCommand(&nicecmd.Command("FOO_BAR", nicecmd.Run(run), cobra.Command{
+nicecmd.SubCommand(rootCmd, nicecmd.Run(run), cobra.Command{
 	Use:   "bar"
 	Short: "Do the fizzing and buzzing"
-}, SubConfig{}))
+}, SubConfig{})
 
 func setup(cfg RootConfig, cmd *cobra.Command, args []string) error {
 	// This always gets called before bar (or any other sub-command).
@@ -150,8 +142,8 @@ Whereas if `log-level` was not persistent, only the first command would work.
 ### Automatic naming
 
 This package will automatically derive a name for parameters and environment variables from the
-field name of your configuration structure. An optional prefix for environment variables (`HELLO_`
-in the example above) can be set. Names can be overridden via `param` and `env`:
+field name of your configuration structure. A prefix is derived from the first word of a command's
+`Use` line. Individual field names can be overridden via `param` and `env`:
 
 * `FooBarBaz string` is set via param `--foo-bar-baz` or env var `FOO_BAR_BAZ`
 * Use `param:"foo"` to change just the long form

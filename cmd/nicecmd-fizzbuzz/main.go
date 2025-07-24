@@ -17,9 +17,9 @@ type MainConfig struct {
 }
 
 func main() {
-	cmd := nicecmd.Command("FIZZBUZZ", nicecmd.PersistentPreRun(setup), cobra.Command{
+	cmd := nicecmd.RootCommand(nicecmd.Setup(setup), cobra.Command{
 		Use:   "fizzbuzz [--log-level <level>] [--log-type <JSON|TEXT>]",
-		Short: "enterprise-grade fizzbuzz (nicecmd demo)",
+		Short: "Enterprise-grade fizzbuzz (nicecmd demo)",
 	}, MainConfig{
 		Log: logutil.Config{
 			Level:  logutil.Level(slog.LevelInfo),
@@ -27,7 +27,7 @@ func main() {
 		},
 	})
 
-	cmd.AddCommand(localcmd.NewCommand())
+	localcmd.Create(cmd)
 
 	if err := cmd.Execute(); err != nil {
 		os.Exit(1)

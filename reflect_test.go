@@ -80,7 +80,7 @@ func TestBindConfig_AllTypes(t *testing.T) {
 
 	var conf AllTypesConfig
 	cmd := &cobra.Command{}
-	BindConfig("TEST", cmd, &conf)
+	BindConfig(cmd, &conf, WithEnvPrefix("TEST"))
 
 	// Extract "expect" tags via reflection on conf
 	expected := make(map[string]struct{})
@@ -128,7 +128,7 @@ func TestBindConfig_Nested(t *testing.T) {
 		} `flag:"required"`
 	}
 	cmd := &cobra.Command{}
-	BindConfig("TEST", cmd, &conf)
+	BindConfig(cmd, &conf, WithEnvPrefix("TEST"))
 	if err := cmd.Flags().Set("level1-outer", "true"); err != nil {
 		t.Errorf("set outer: %v", err)
 	}
@@ -161,10 +161,10 @@ func expectPanic(t *testing.T, message string, f func()) {
 func TestBindConfig_InvalidEnvPrefix(t *testing.T) {
 	benignCmd := &cobra.Command{}
 	expectPanic(t, "must not end with an underscore", func() {
-		BindConfig("TEST_", benignCmd, &struct{}{})
+		BindConfig(benignCmd, &struct{}{}, WithEnvPrefix("TEXT_"))
 	})
 	expectPanic(t, "must be all uppercase", func() {
-		BindConfig("TeST", benignCmd, &struct{}{})
+		BindConfig(benignCmd, &struct{}{}, WithEnvPrefix("TeST"))
 	})
 }
 
@@ -207,7 +207,9 @@ func TestBindConfig_InvalidConfigTags(t *testing.T) {
 	for _, test := range tt {
 		t.Run(test.name, func(t *testing.T) {
 			expectPanic(t, test.panic, func() {
-				BindConfig("TEST", &cobra.Command{}, test.conf)
+				BindConfig(&cobra.Command{},
+					test.conf,
+					WithEnvPrefix("TEST"))
 			})
 		})
 	}
@@ -257,8 +259,12 @@ func TestBindConfig_EnvironmentProcessing(t *testing.T) {
 	for _, test := range tt {
 		t.Run(test.name, func(t *testing.T) {
 			var cfg EnvConfig
+			var opts []Option
 			Environment = test.useEnv
-			BindConfig(test.prefix, &cobra.Command{}, &cfg)
+			if test.prefix != "" {
+				opts = append(opts, WithEnvPrefix(test.prefix))
+			}
+			BindConfig(&cobra.Command{}, &cfg, opts...)
 			if !reflect.DeepEqual(cfg, test.want) {
 				t.Errorf("environment mismatch, want foo=%q, bar=%q, baz=%q, got foo=%q, bar=%q, baz=%q",
 					test.want.Foo, test.want.BarForNiceCmd, test.want.BazForNiceCmd,
@@ -277,7 +283,7 @@ func TestBindConfig_BadEnvironment(t *testing.T) {
 	cmd := &cobra.Command{}
 	buf := &bytes.Buffer{}
 	cmd.SetOut(buf)
-	if BindConfig("NICECMD_TEST", cmd, &cfg) {
+	if BindConfig(cmd, &cfg, WithEnvPrefix("NICECMD_TEST")) {
 		t.Error("expected BindConfig to fail")
 		return
 	}
