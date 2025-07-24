@@ -7,7 +7,6 @@ func Test_slug(t *testing.T) {
 		in   string
 		want string
 	}{
-
 		{"CamelCase", "camel-case"},
 		{"CamelCamelCase", "camel-camel-case"},
 		{"Camel2Camel2Case", "camel2-camel2-case"},

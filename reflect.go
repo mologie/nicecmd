@@ -183,10 +183,10 @@ func recurseStruct(paramPrefix, envPrefix string, parentOpts fieldOpts,
 		case *net.IPNet:
 			fs.IPNetVarP(p, tags.name, tags.abbrev, *p, tags.usage)
 		default:
-			if pFlag, ok := in.(pflag.Value); ok {
+			if flagValue, ok := in.(pflag.Value); ok {
 				// A bunch of libraries, such as K8s, use pflag.Value for various types that also
 				// get used as flags with Cobra in frontend tools. This is a catch-all for those.
-				fs.VarP(pFlag, tags.name, tags.abbrev, tags.usage)
+				fs.VarP(flagValue, tags.name, tags.abbrev, tags.usage)
 			} else if textFlag, ok := in.(textUnmarshalledFlag); ok {
 				// This is our magic extension point, where any TextUnmarshaler+Stringer can become
 				// a flag if it additionally defines CmdTypeDesc() for help messages. The latter
@@ -224,7 +224,7 @@ func recurseStruct(paramPrefix, envPrefix string, parentOpts fieldOpts,
 			if envVal := os.Getenv(tags.env); envVal != "" {
 				ansiColor := "32" // green
 				if err := param.Value.Set(envVal); err != nil {
-					cmd.Printf("Error: environment variable %s: %s\n", tags.env, err)
+					cmd.Printf("Error: environment variable %q: %s\n", tags.env, err)
 					*fail = true
 					ansiColor = "31" // red
 				}

@@ -264,10 +264,7 @@ func TestBindConfig_BadEnvironment(t *testing.T) {
 	type EnvConfig struct {
 		Bad int
 	}
-	if err := os.Setenv("NICECMD_TEST_BAD", "value"); err != nil {
-		t.Errorf("setenv: %v", err)
-		return
-	}
+	_ = os.Setenv("NICECMD_TEST_BAD", "not-an-integer")
 	var cfg EnvConfig
 	cmd := &cobra.Command{}
 	buf := &bytes.Buffer{}
@@ -276,7 +273,8 @@ func TestBindConfig_BadEnvironment(t *testing.T) {
 		t.Error("expected BindConfig to fail")
 		return
 	}
-	if out := buf.String(); !strings.Contains(out, "NICECMD_TEST_BAD:") {
+	out := buf.String()
+	if !strings.Contains(out, `Error: environment variable "NICECMD_TEST_BAD":`) {
 		t.Errorf("expected BindConfig to print environment variable error, but got output: %v", out)
 	}
 }
