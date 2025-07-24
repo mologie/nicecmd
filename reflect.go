@@ -12,6 +12,9 @@ import (
 	"time"
 )
 
+// TimeFormats are used in order for attempting to parse points in time form string inputs.
+var TimeFormats = []string{time.RFC3339Nano, time.RFC3339}
+
 const (
 	// optPersistent adds the flag to the persistent flag set instead of the command flag set.
 	// Persistent flags are a Cobra feature where the parameter is allowed to appear anywhere, not
@@ -201,6 +204,8 @@ func recurseStruct(
 			fs.DurationVarP(p, tags.name, tags.abbrev, *p, tags.usage)
 		case *[]time.Duration:
 			fs.DurationSliceVarP(p, tags.name, tags.abbrev, *p, tags.usage)
+		case *time.Time:
+			fs.TimeVarP(p, tags.name, tags.abbrev, *p, TimeFormats, tags.usage)
 		case *net.IP:
 			fs.IPVarP(p, tags.name, tags.abbrev, *p, tags.usage)
 		case *net.IPMask:

@@ -46,6 +46,7 @@ type AllTypesConfig struct {
 	StringToString map[string]string `expect:"--string-to-string stringToString * (env TEST_STRING_TO_STRING) (default [])" usage:"*"`
 	Duration       time.Duration     `expect:"--duration duration * (env TEST_DURATION)" usage:"*"`
 	Durations      []time.Duration   `expect:"--durations durationSlice * (env TEST_DURATIONS) (default [])" usage:"*"`
+	Time           time.Time         `expect:"--time time * (env TEST_TIME)" usage:"*"`
 	IP             net.IP            `expect:"--ip ip * (env TEST_IP)" usage:"*"`
 	IPMask         net.IPMask        `expect:"--ip-mask ipMask * (env TEST_IP_MASK)" usage:"*"`
 	IPNet          net.IPNet         `expect:"--ip-net ipNet * (env TEST_IP_NET)" usage:"*"`
