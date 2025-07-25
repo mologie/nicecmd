@@ -50,6 +50,7 @@ func SetupAndRun[T any](setup Hook[T], run Hook[T]) Hooks[T] {
 func RootCommand[T any](hooks Hooks[T], cmd cobra.Command, cfg T, opts ...Option) *cobra.Command {
 	if Environment {
 		hooks.PersistentPreRun = applyEnvToCmd(&cmd, hooks.PersistentPreRun)
+		hooks.PersistentPreRun = applyDotEnv(&cmd, hooks.PersistentPreRun)
 		cmd.SetHelpFunc(applyEnvToHelp(cmd.HelpFunc()))
 		cmd.SetUsageFunc(applyEnvToUsage(cmd.UsageFunc()))
 	}
@@ -119,6 +120,7 @@ func opinionatedBindConfig[T any](parent *cobra.Command, hooks Hooks[T], cmd *co
 		fullCommand := strings.Join(append(commands, cmd.Name()), " ")
 		defaultName := screamingSnake(fullCommand)
 		opts = append([]Option{WithEnvPrefix(defaultName)}, opts...)
+		cmd.AddCommand(newPrintEnvCmd(cmd, fullCommand))
 	}
 
 	cmd.PersistentPreRunE = passCfg(&cfg, hooks.PersistentPreRun)

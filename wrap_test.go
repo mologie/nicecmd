@@ -230,6 +230,51 @@ func TestCommand_SubEnvVars(t *testing.T) {
 	}
 }
 
+func TestCommand_DotEnv(t *testing.T) {
+	tt := []struct {
+		name      string
+		overwrite bool
+	}{
+		{"without overwrite", false},
+		{"with overwrite", true},
+	}
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			args := []string{"--env-file", ".env", "sub"}
+			if tc.overwrite {
+				args = append(args, "--env-overwrite")
+			}
+			loaded := false
+			f := &pkgDotEnvLoad
+			if tc.overwrite {
+				f = &pkgDotEnvOverload
+			}
+			defer replace(f, func(filenames ...string) error {
+				if len(filenames) == 0 || filenames[0] != ".env" {
+					return fmt.Errorf("expected filename .env, got %q", filenames)
+				}
+				_ = os.Setenv("NICECMD_TEST_FOO", "foo")
+				_ = os.Setenv("NICECMD_TEST_SUB_FOO", "foo")
+				loaded = true
+				return nil
+			})()
+			defer func() {
+				_ = os.Unsetenv("NICECMD_TEST_FOO")
+				_ = os.Unsetenv("NICECMD_TEST_SUB_FOO")
+			}()
+			rootCmd := RootCommand(Setup(trivialRun), cobra.Command{Use: "nicecmd-test"}, TrivialConf{})
+			rootCmd.SetArgs(args)
+			SubCommand(rootCmd, Run(trivialRun), cobra.Command{Use: "sub"}, TrivialConf{})
+			if err := rootCmd.Execute(); err != nil {
+				t.Errorf("execute: %v", err)
+			}
+			if !loaded {
+				t.Error("expected .env file to be loaded, but it was not")
+			}
+		})
+	}
+}
+
 func TestCommand_MissingUsage(t *testing.T) {
 	defer func() {
 		if r := recover(); r == nil {
@@ -268,5 +313,13 @@ func tempEnv(t *testing.T, envs [][2]string) func() {
 				t.Errorf("failed to unset env %s=%s: %v", env[0], env[1], err)
 			}
 		}
+	}
+}
+
+func replace[T any](p *T, hook T) func() {
+	old := *p
+	*p = hook
+	return func() {
+		*p = old
 	}
 }
