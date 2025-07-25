@@ -6,16 +6,11 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"net"
-	"os"
 	"reflect"
 	"slices"
 	"strings"
 	"time"
 )
-
-// Environment is a kill-switch for BindConfig to disable environment variable processing.
-// Set this globally if you use another library for environment variables, e.g. Viper.
-var Environment = true
 
 const (
 	// optPersistent adds the flag to the persistent flag set instead of the command flag set.
@@ -35,6 +30,11 @@ const (
 	encodingRaw    = "raw"
 )
 
+const (
+	// annotationEnv stores the environment variable's name to which the flag is bound.
+	annotationEnv = "nicecmd_env"
+)
+
 type config struct {
 	EnvPrefix string
 }
@@ -44,6 +44,7 @@ type Option func(*config)
 // WithEnvPrefix sets a prefix to prepend to env vars, separated by an underscore. For sub-structs,
 // the prefix is further extended with the screaming snake case of the field name under which the
 // struct is embedded.
+// When no prefix is set, then environment variables are unavailable unless set explicitly.
 func WithEnvPrefix(prefix string) Option {
 	if prefix == "" {
 		panic("env prefix must not be empty")
@@ -68,7 +69,7 @@ func WithEnvPrefix(prefix string) Option {
 //   - encoding: Type-specific encoding, e.g. "base64" for []byte.
 //   - env: Environment variable name, "-" for none, defaults to prefixed screaming snake case.
 //   - usage: Flag usage string. Environment variable name is appended if set.
-func BindConfig(cmd *cobra.Command, cfg any, opts ...Option) bool {
+func BindConfig(cmd *cobra.Command, cfg any, opts ...Option) {
 	var bindCfg config
 	for _, opt := range opts {
 		opt(&bindCfg)
@@ -77,13 +78,14 @@ func BindConfig(cmd *cobra.Command, cfg any, opts ...Option) bool {
 	if v.Kind() != reflect.Ptr || v.Elem().Kind() != reflect.Struct {
 		panic("cfg must be a struct pointer")
 	}
-	var fail bool
-	recurseStruct("", bindCfg.EnvPrefix, fieldOpts{}, cmd, v.Elem(), &fail)
-	return !fail
+	recurseStruct(v.Elem(), cmd, "", bindCfg.EnvPrefix, fieldOpts{})
 }
 
-func recurseStruct(paramPrefix, envPrefix string, parentOpts fieldOpts,
-	cmd *cobra.Command, struct_ reflect.Value, fail *bool,
+func recurseStruct(
+	struct_ reflect.Value,
+	cmd *cobra.Command,
+	paramPrefix, envPrefix string,
+	parentOpts fieldOpts,
 ) {
 	type_ := struct_.Type()
 	for i := 0; i < type_.NumField(); i++ {
@@ -99,7 +101,6 @@ func recurseStruct(paramPrefix, envPrefix string, parentOpts fieldOpts,
 		}
 
 		// Register with flag set
-		// You can add support for custom types by implementing textUmarshalledFlag or pflag.Value.
 		// If I happened to miss a type that is supported by spf13/pflag, please let me know and
 		// I'll add it here. However, custom or other stdlib types won't be supported directly by
 		// matching their type here, as that would require adding additional packages.
@@ -207,45 +208,36 @@ func recurseStruct(paramPrefix, envPrefix string, parentOpts fieldOpts,
 				// pflag 1.0.7 adds support for anything that implements text marshalling
 				fs.TextVarP(decoder, tags.name, tags.abbrev, encoder, tags.usage)
 			} else if value.Kind() == reflect.Struct && value.Type().NumField() > 0 {
-				recurseStruct(tags.name+"-", tags.env+"_", opts, cmd, value, fail)
-				continue // do not process an environment variable
+				// Recurse into sub-structs
+				var nextEnv string
+				if tags.HasEnv() {
+					nextEnv = tags.env + "_"
+				}
+				recurseStruct(value, cmd, tags.name+"-", nextEnv, opts)
+				continue
 			} else {
 				panic(fmt.Sprintf("unsupported field type %T", p))
 			}
 		}
 
-		param := fs.Lookup(tags.name)
-		if param == nil {
+		flag := fs.Lookup(tags.name)
+		if flag == nil {
 			panic(fmt.Sprintf("flag %q not found after it was added", tags.name))
 		}
 
 		if opts.required {
-			if err := cobra.MarkFlagRequired(fs, param.Name); err != nil {
+			if err := cobra.MarkFlagRequired(fs, flag.Name); err != nil {
 				panic(fmt.Sprintf("failed to mark flag %q as required: %s", tags.name, err))
 			}
-			if len(param.Usage) != 0 {
-				param.Usage += " "
+			if len(flag.Usage) != 0 {
+				flag.Usage += " "
 			}
-			param.Usage += "(required)"
+			flag.Usage += "(required)"
 		}
 
-		// Apply environment variable
-		//goland:noinspection GoBoolExpressions
-		if Environment && tags.HasEnv() {
-			if len(param.Usage) != 0 {
-				param.Usage += " "
-			}
-			if envVal := os.Getenv(tags.env); envVal != "" {
-				ansiColor := "32" // green
-				if err := param.Value.Set(envVal); err != nil {
-					cmd.Printf("Error: environment variable %q: %s\n", tags.env, err)
-					*fail = true
-					ansiColor = "31" // red
-				}
-				param.Changed = true
-				param.Usage += fmt.Sprintf("(\033[%smenv %s=%q\033[0m)", ansiColor, tags.env, envVal)
-			} else {
-				param.Usage += fmt.Sprintf("(env %s)", tags.env)
+		if tags.HasEnv() {
+			if err := fs.SetAnnotation(flag.Name, annotationEnv, []string{tags.env}); err != nil {
+				panic(fmt.Sprintf("failed to set env annotation for %q: %s", tags.name, err))
 			}
 		}
 	}
@@ -296,9 +288,13 @@ func getFieldTags(paramPrefix, envPrefix string, field reflect.StructField) (tag
 	}
 
 	if tags.env == "" {
-		tags.env = envPrefix + screamingSnake(field.Name)
-	} else if tags.env != strings.ToUpper(tags.env) {
-		panic(fmt.Sprintf("env tag %q for %q must be uppercase", tags.env, tags.name))
+		if envPrefix == "" {
+			tags.env = "-"
+		} else {
+			tags.env = envPrefix + screamingSnake(field.Name)
+		}
+	} else if upper := screamingSnake(tags.env); tags.env != "-" && tags.env != upper {
+		panic(fmt.Sprintf("env tag %q for %q must be in SCREAMING_SNAKE_CASE (%q)", tags.env, tags.name, upper))
 	}
 
 	return

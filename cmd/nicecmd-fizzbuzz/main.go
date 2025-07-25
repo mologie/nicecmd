@@ -34,7 +34,7 @@ func main() {
 	}
 }
 
-func setup(cfg MainConfig, cmd *cobra.Command, args []string) error {
+func setup(cfg *MainConfig, cmd *cobra.Command, args []string) error {
 	// This method demonstrates inheriting a log context to child commands.
 	// An application could also use slog.SetDefault(), but I'd rather have an
 	// invalid default handler and ensure that logging contexts are propagated

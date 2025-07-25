@@ -23,7 +23,7 @@ func main() {
 	}
 }
 
-func greet(cfg Config, cmd *cobra.Command, args []string) error {
+func greet(cfg *Config, cmd *cobra.Command, args []string) error {
 	cmd.Printf("Hello, %s!\n", cfg.Name)
 	cmd.Printf("The weather looks %s today!\n", cfg.Weather)
 	return nil

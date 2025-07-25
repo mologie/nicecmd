@@ -37,7 +37,7 @@ func main() {
 	}
 }
 
-func greet(cfg Config, cmd *cobra.Command, args []string) error {
+func greet(cfg *Config, cmd *cobra.Command, args []string) error {
 	cmd.Printf("Hello, %s!\n", cfg.Name)
 	cmd.Printf("The weather looks %s today!\n", cfg.Weather)
 	return nil
@@ -66,9 +66,9 @@ Principles and Patterns
 
 ### Immutable, type-safe, private configuration
 
-All configuration is passed to commands by value as copy. Default values are encoded in a type-safe
-way in the initial struct passed to `nicecmd.Command`. Only the command's run function gets access
-to the filled-out configuration.
+All configuration is passed to commands as struct. Default values are encoded in a type-safe way in
+the initial struct passed to `nicecmd.RootCommand`. Only the command's run function gets access to
+the filled-out configuration.
 
 ### Avoid global variables
 
@@ -77,7 +77,7 @@ register the command with some global `rootCmd`. I found that this quickly creat
 unrelated state of various subcommands. Likewise, you could access another command's variables,
 despite them being uninitialized.
 
-With `nicecmd` all configuration is in a struct, and you get an immutable copy of it to work with.
+With `nicecmd` all configuration is in a struct, and you get a private copy of it to work with.
 This avoids global variables for parameters.
 
 ### Sub-commands
@@ -105,13 +105,13 @@ nicecmd.SubCommand(rootCmd, nicecmd.Run(run), cobra.Command{
 	Short: "Do the fizzing and buzzing"
 }, SubConfig{})
 
-func setup(cfg RootConfig, cmd *cobra.Command, args []string) error {
+func setup(cfg *RootConfig, cmd *cobra.Command, args []string) error {
 	// This always gets called before bar (or any other sub-command).
 	myLog := logutil.NewSLog(cfg.LogLevel)
 	cmd.SetContext(logutil.WithLogContext(cmd.Context(), myLog))
 }
 
-func run(cfg SubConfig, cmd *cobra.Command, args []string) error {
+func run(cfg *SubConfig, cmd *cobra.Command, args []string) error {
 	log := logutil.FromContext(cmd.Context())
 	log.Debug("fizz buzzing will commence") // but is omitted
 }

@@ -24,7 +24,7 @@ func Create(parent *cobra.Command) *cobra.Command {
 	})
 }
 
-func run(cfg Config, cmd *cobra.Command, args []string) error {
+func run(cfg *Config, cmd *cobra.Command, args []string) error {
 	if cfg.Limit <= 0 {
 		return fmt.Errorf("limit must be >0, but got %d", cfg.Limit)
 	}
