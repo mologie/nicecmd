@@ -58,6 +58,7 @@ Available Commands:
 Flags:
       --env-file stringArray   load dotenv file (repeat for multiple files)
       --env-overwrite          give precedence to dotenv environment variables
+      --env-lax                ignore unbound environment variables
   -h, --help                   help for nicecmd-readme
       --name string            person to greet (required) (env NICECMD_README_NAME)
   -w, --weather string         how's the weather? (env NICECMD_README_WEATHER) (default "nice")

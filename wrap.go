@@ -50,9 +50,11 @@ func SetupAndRun[T any](setup Hook[T], run Hook[T]) Hooks[T] {
 func RootCommand[T any](hooks Hooks[T], cmd cobra.Command, cfg T, opts ...Option) *cobra.Command {
 	if Environment {
 		hooks.PersistentPreRun = applyEnvToCmd(&cmd, hooks.PersistentPreRun)
+		hooks.PersistentPreRun = checkEnv(&cmd, hooks.PersistentPreRun)
 		hooks.PersistentPreRun = applyDotEnv(&cmd, hooks.PersistentPreRun)
 		cmd.SetHelpFunc(applyEnvToHelp(cmd.HelpFunc()))
 		cmd.SetUsageFunc(applyEnvToUsage(cmd.UsageFunc()))
+		cmd.PersistentFlags().Bool("env-lax", false, "ignore unbound environment variables")
 	}
 	opinionatedBindConfig(nil, hooks, &cmd, cfg, opts...)
 	return &cmd

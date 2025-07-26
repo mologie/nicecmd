@@ -262,9 +262,9 @@ func TestCommand_DotEnv(t *testing.T) {
 				_ = os.Unsetenv("NICECMD_TEST_FOO")
 				_ = os.Unsetenv("NICECMD_TEST_SUB_FOO")
 			}()
-			rootCmd := RootCommand(Setup(trivialRun), cobra.Command{Use: "nicecmd-test"}, TrivialConf{})
+			rootCmd := RootCommand(Setup(trivialRun), cobra.Command{Use: "nicecmd-test"}, trivialConf{})
 			rootCmd.SetArgs(args)
-			SubCommand(rootCmd, Run(trivialRun), cobra.Command{Use: "sub"}, TrivialConf{})
+			SubCommand(rootCmd, Run(trivialRun), cobra.Command{Use: "sub"}, trivialConf{})
 			if err := rootCmd.Execute(); err != nil {
 				t.Errorf("execute: %v", err)
 			}
@@ -295,8 +295,42 @@ func TestCommand_UsageAndExitOnBadConfig(t *testing.T) {
 	if err := cmd.Execute(); !errors.As(err, &errInvalid) {
 		t.Errorf("expected Command to fail with ErrInvalidEnvironment, got: %v", err)
 	}
+	if len(errInvalid.FlagErrors) != 1 || errInvalid.FlagErrors[0].Flag.Name != "bar" {
+		t.Errorf("expected Command to fail due to flag bar")
+	}
 	if out := buf.String(); !strings.Contains(out, "Usage:") {
 		t.Errorf("expected Command to print usage on invalid env, but got output: %v", out)
+	}
+}
+
+func TestCommand_UnboundEnv(t *testing.T) {
+	tt := []struct {
+		name string
+		args []string
+		num  int
+	}{
+		{"root command", []string{}, 3},     // one in root, both in unused sub
+		{"sub command", []string{"sub"}, 2}, // one in root, one in sub
+	}
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			defer tempEnv(t, [][2]string{
+				{"NICECMD_TEST_FOO", "foo"},
+				{"NICECMD_TEST_UNBOUND", "bar"},
+				{"NICECMD_TEST_SUB_FOO", "foo"},
+				{"NICECMD_TEST_SUB_UNBOUND", "bar"},
+			})()
+			rootCmd := RootCommand(Run(trivialRun), cobra.Command{Use: "nicecmd-test"}, trivialConf{})
+			rootCmd.SetArgs(tc.args)
+			SubCommand(rootCmd, Run(trivialRun), cobra.Command{Use: "sub"}, trivialConf{})
+			var errUnbound ErrUnboundEnvironment
+			if err := rootCmd.Execute(); !errors.As(err, &errUnbound) {
+				t.Errorf("expected Command to fail with ErrUnboundEnvironment, got: %v", err)
+			}
+			if len(errUnbound.Names) != tc.num {
+				t.Errorf("expected Command to fail with %d unbound env vars, got: %v", tc.num, errUnbound.Names)
+			}
+		})
 	}
 }
 

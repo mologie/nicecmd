@@ -74,6 +74,13 @@ func BindConfig(cmd *cobra.Command, cfg any, opts ...Option) {
 	for _, opt := range opts {
 		opt(&bindCfg)
 	}
+	if bindCfg.EnvPrefix != "" {
+		if cmd.Annotations == nil {
+			cmd.Annotations = map[string]string{annotationEnv: bindCfg.EnvPrefix}
+		} else {
+			cmd.Annotations[annotationEnv] = bindCfg.EnvPrefix
+		}
+	}
 	v := reflect.ValueOf(cfg)
 	if v.Kind() != reflect.Ptr || v.Elem().Kind() != reflect.Struct {
 		panic("cfg must be a struct pointer")
