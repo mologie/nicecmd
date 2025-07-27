@@ -1,7 +1,6 @@
 package nicecmd
 
 import (
-	"encoding"
 	"fmt"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -187,11 +186,6 @@ func recurseStruct(paramPrefix, envPrefix string, parentOpts fieldOpts,
 				// A bunch of libraries, such as K8s, use pflag.Value for various types that also
 				// get used as flags with Cobra in frontend tools. This is a catch-all for those.
 				fs.VarP(flagValue, tags.name, tags.abbrev, tags.usage)
-			} else if textFlag, ok := in.(textUnmarshalledFlag); ok {
-				// This is our magic extension point, where any TextUnmarshaler+Stringer can become
-				// a flag if it additionally defines CmdTypeDesc() for help messages. The latter
-				// method also avoids accidentally flag-i-fying a type that is not meant to be one.
-				fs.VarP(newTextValue(textFlag), tags.name, tags.abbrev, tags.usage)
 			} else if value.Kind() == reflect.Struct && value.Type().NumField() > 0 {
 				recurseStruct(tags.name+"-", tags.env+"_", opts, cmd, value, fail)
 				continue // do not process an environment variable
@@ -302,27 +296,4 @@ func (ft fieldTags) Opts() (opts fieldOpts) {
 
 func (ft fieldTags) HasEnv() bool {
 	return ft.env != "-"
-}
-
-type textUnmarshalledFlag interface {
-	encoding.TextUnmarshaler
-	String() string
-	CmdTypeDesc() string
-}
-
-// textValue implements pflag.Value for textUnmarshalledFlag.
-type textValue struct {
-	textUnmarshalledFlag
-}
-
-func newTextValue(p textUnmarshalledFlag) *textValue {
-	return &textValue{textUnmarshalledFlag: p}
-}
-
-func (d *textValue) Set(s string) error {
-	return d.UnmarshalText([]byte(s))
-}
-
-func (d *textValue) Type() string {
-	return d.CmdTypeDesc()
 }

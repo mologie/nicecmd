@@ -49,7 +49,6 @@ type AllTypesConfig struct {
 	IPMask         net.IPMask        `expect:"--ip-mask ipMask * (env TEST_IP_MASK)" usage:"*"`
 	IPNet          net.IPNet         `expect:"--ip-net ipNet * (env TEST_IP_NET)" usage:"*"`
 	PFlagValue     pflagValue        `expect:"--pflag-value pflagValue * (env TEST_PFLAG_VALUE)" param:"pflag-value" env:"TEST_PFLAG_VALUE" usage:"*"`
-	NiceValue      niceValue         `expect:"-n, --nice-value niceValue * (env TEST_NICE_VALUE)" param:"n" usage:"*"`
 }
 
 type pflagValue struct{ val string }
@@ -57,12 +56,6 @@ type pflagValue struct{ val string }
 func (p *pflagValue) Set(s string) error { p.val = s; return nil }
 func (p *pflagValue) String() string     { return p.val }
 func (p *pflagValue) Type() string       { return "pflagValue" }
-
-type niceValue struct{ val string }
-
-func (c *niceValue) UnmarshalText(b []byte) error { c.val = string(b); return nil }
-func (c *niceValue) String() string               { return c.val }
-func (c *niceValue) CmdTypeDesc() string          { return "niceValue" }
 
 func TestBindConfig_AllTypes(t *testing.T) {
 	// This test is pretty cheesy, (ab)using the fact that the FlagUsages() method accesses most of
@@ -115,7 +108,7 @@ func TestBindConfig_Nested(t *testing.T) {
 		Level1 struct {
 			Outer  bool `usage:"*"`
 			Level2 struct {
-				Inner niceValue `usage:"*"`
+				Inner pflagValue `usage:"*"`
 			} `flag:"persistent"`
 		} `flag:"required"`
 	}
