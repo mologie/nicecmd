@@ -2,12 +2,11 @@ package nicecmd
 
 import (
 	"bufio"
-	"bytes"
 	"encoding"
+	"fmt"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"net"
-	"os"
 	"reflect"
 	"regexp"
 	"strings"
@@ -78,13 +77,18 @@ func TestBindConfig_AllTypes(t *testing.T) {
 	// Caveats with this approach are that there is no 1:1 mapping between fields and expected help,
 	// and that changes in Cobra that substantially modify help output will break this test.
 
-	var conf AllTypesConfig
+	var cfg AllTypesConfig
 	cmd := &cobra.Command{}
-	BindConfig("TEST", cmd, &conf)
+	BindConfig(cmd, &cfg, WithEnvPrefix("TEST"))
+	cmd.Flags().VisitAll(func(flag *pflag.Flag) {
+		if annotations, ok := flag.Annotations[annotationEnv]; ok {
+			flag.Usage += fmt.Sprintf(" (env %s)", annotations[0])
+		}
+	})
 
-	// Extract "expect" tags via reflection on conf
+	// Extract "expect" tags via reflection on cfg
 	expected := make(map[string]struct{})
-	confType := reflect.ValueOf(conf).Type()
+	confType := reflect.ValueOf(cfg).Type()
 	for i := 0; i < confType.NumField(); i++ {
 		field := confType.Field(i)
 		if expect, ok := field.Tag.Lookup("expect"); ok {
@@ -128,43 +132,55 @@ func TestBindConfig_Nested(t *testing.T) {
 		} `flag:"required"`
 	}
 	cmd := &cobra.Command{}
-	BindConfig("TEST", cmd, &conf)
-	if err := cmd.Flags().Set("level1-outer", "true"); err != nil {
+	BindConfig(cmd, &conf, WithEnvPrefix("TEST"))
+	fs := cmd.Flags()
+	pfs := cmd.PersistentFlags()
+
+	if err := fs.Set("level1-outer", "true"); err != nil {
 		t.Errorf("set outer: %v", err)
 	}
-	if cmd.Flags().Lookup("level1-outer").Annotations[cobra.BashCompOneRequiredFlag] == nil {
+	if _, ok := fs.Lookup("level1-outer").Annotations[cobra.BashCompOneRequiredFlag]; !ok {
 		t.Error("outer should be required")
 	}
 	if !conf.Level1.Outer {
 		t.Error("outer bool should be true")
 	}
 
-	if err := cmd.PersistentFlags().Set("level1-level2-inner", "foo"); err != nil {
+	if err := pfs.Set("level1-level2-inner", "foo"); err != nil {
 		t.Errorf("set inner: %v", err)
 	}
 	if conf.Level1.Level2.Inner.val != "foo" {
 		t.Errorf(`inner value mismatch, expected "foo", got %q`, conf.Level1.Level2.Inner.val)
 	}
+
+	if env := pfs.Lookup("level1-level2-inner").Annotations[annotationEnv]; len(env) == 0 || env[0] != "TEST_LEVEL1_LEVEL2_INNER" {
+		t.Errorf("expected env var for inner to be TEST_LEVEL1_LEVEL2_INNER, got %q", env)
+	}
 }
 
-func expectPanic(t *testing.T, message string, f func()) {
-	defer func() {
-		if r := recover(); r == nil {
-			t.Error("expected panic")
-		} else if !strings.Contains(r.(string), message) {
-			t.Errorf("unexpected panic: %v", r)
-		}
-	}()
-	f()
+func TestBindConfig_ExplicitEnv(t *testing.T) {
+	type conf struct {
+		String string `env:"TEST_STRING" usage:"*"`
+		Int    int    `usage:"*"`
+	}
+	cmd := &cobra.Command{}
+	BindConfig(cmd, &conf{})
+	fs := cmd.Flags()
+	if env := fs.Lookup("string").Annotations[annotationEnv]; len(env) == 0 || env[0] != "TEST_STRING" {
+		t.Errorf("expected env var for string to be TEST_STRING, got %q", env)
+	}
+	if _, ok := fs.Lookup("int").Annotations[annotationEnv]; ok {
+		t.Error("expected no env var for int, but found one")
+	}
 }
 
 func TestBindConfig_InvalidEnvPrefix(t *testing.T) {
 	benignCmd := &cobra.Command{}
 	expectPanic(t, "must not end with an underscore", func() {
-		BindConfig("TEST_", benignCmd, &struct{}{})
+		BindConfig(benignCmd, &struct{}{}, WithEnvPrefix("TEXT_"))
 	})
 	expectPanic(t, "must be all uppercase", func() {
-		BindConfig("TeST", benignCmd, &struct{}{})
+		BindConfig(benignCmd, &struct{}{}, WithEnvPrefix("TeST"))
 	})
 }
 
@@ -194,7 +210,7 @@ func TestBindConfig_InvalidConfigTags(t *testing.T) {
 		{name: "bad type", panic: "unsupported field type *nicecmd.unsupported", conf: &struct {
 			Unsupported unsupported
 		}{}},
-		{name: "bad env name", panic: "must be uppercase", conf: &struct {
+		{name: "bad env name", panic: "must be in SCREAMING_SNAKE_CASE", conf: &struct {
 			String string `env:"lowercase"`
 		}{}},
 		{name: "bad abbreviation", panic: "must be a single character", conf: &struct {
@@ -207,82 +223,23 @@ func TestBindConfig_InvalidConfigTags(t *testing.T) {
 	for _, test := range tt {
 		t.Run(test.name, func(t *testing.T) {
 			expectPanic(t, test.panic, func() {
-				BindConfig("TEST", &cobra.Command{}, test.conf)
+				BindConfig(&cobra.Command{},
+					test.conf,
+					WithEnvPrefix("TEST"))
 			})
 		})
 	}
 }
 
-func TestBindConfig_EnvironmentProcessing(t *testing.T) {
+func expectPanic(t *testing.T, message string, f func()) {
+	t.Helper()
 	defer func() {
-		// restore environment processing in non-parallel test
-		Environment = true
-	}()
-
-	type EnvConfig struct {
-		// long names should be sufficient to avoid a collision with the user's envvars
-		Foo           string `env:"NICE_CUSTOM_FOO"`
-		BarForNiceCmd string
-		BazForNiceCmd string // never set
-	}
-
-	envs := [][2]string{
-		{"NICE_CUSTOM_FOO", "foo"},
-		{"BAR_FOR_NICE_CMD", "bar"},
-		{"PREFIXED_BAZ_FOR_NICE_CMD", "prefixed"},
-	}
-	defer func() {
-		for _, keyval := range envs {
-			_ = os.Unsetenv(keyval[0])
+		t.Helper()
+		if r := recover(); r == nil {
+			t.Error("expected panic")
+		} else if !strings.Contains(r.(string), message) {
+			t.Errorf("unexpected panic: %v", r)
 		}
 	}()
-	for _, keyval := range envs {
-		if err := os.Setenv(keyval[0], keyval[1]); err != nil {
-			t.Errorf("setenv %q=%q: %v", keyval[0], keyval[1], err)
-			return
-		}
-	}
-
-	tt := []struct {
-		name   string
-		useEnv bool
-		prefix string
-		want   EnvConfig
-	}{
-		{name: "no prefix", useEnv: true, prefix: "", want: EnvConfig{Foo: "foo", BarForNiceCmd: "bar"}},
-		{name: "with prefix", useEnv: true, prefix: "PREFIXED", want: EnvConfig{Foo: "foo", BazForNiceCmd: "prefixed"}},
-		{name: "wrong prefix", useEnv: true, prefix: "WRONG", want: EnvConfig{Foo: "foo"}},
-		{name: "no env", useEnv: false, prefix: "", want: EnvConfig{}},
-	}
-	for _, test := range tt {
-		t.Run(test.name, func(t *testing.T) {
-			var cfg EnvConfig
-			Environment = test.useEnv
-			BindConfig(test.prefix, &cobra.Command{}, &cfg)
-			if !reflect.DeepEqual(cfg, test.want) {
-				t.Errorf("environment mismatch, want foo=%q, bar=%q, baz=%q, got foo=%q, bar=%q, baz=%q",
-					test.want.Foo, test.want.BarForNiceCmd, test.want.BazForNiceCmd,
-					cfg.Foo, cfg.BarForNiceCmd, cfg.BazForNiceCmd)
-			}
-		})
-	}
-}
-
-func TestBindConfig_BadEnvironment(t *testing.T) {
-	type EnvConfig struct {
-		Bad int
-	}
-	_ = os.Setenv("NICECMD_TEST_BAD", "not-an-integer")
-	var cfg EnvConfig
-	cmd := &cobra.Command{}
-	buf := &bytes.Buffer{}
-	cmd.SetOut(buf)
-	if BindConfig("NICECMD_TEST", cmd, &cfg) {
-		t.Error("expected BindConfig to fail")
-		return
-	}
-	out := buf.String()
-	if !strings.Contains(out, `Error: environment variable "NICECMD_TEST_BAD":`) {
-		t.Errorf("expected BindConfig to print environment variable error, but got output: %v", out)
-	}
+	f()
 }

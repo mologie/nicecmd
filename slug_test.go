@@ -37,6 +37,11 @@ func Test_screamingSnake(t *testing.T) {
 		{"CamelCase", "CAMEL_CASE"},
 		{"CamelCamelCase", "CAMEL_CAMEL_CASE"},
 		{"Camel2Camel2Case", "CAMEL2_CAMEL2_CASE"},
+		{"with-dash", "WITH_DASH"},
+		{"with-Dash", "WITH_DASH"},
+		{"with-Dash-", "WITH_DASH"},
+		{"--with-Dash", "WITH_DASH"},
+		{"IDENTITY_STRING", "IDENTITY_STRING"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.in, func(t *testing.T) {

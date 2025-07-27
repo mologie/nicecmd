@@ -12,8 +12,8 @@ type Config struct {
 }
 
 func main() {
-	cmd := nicecmd.Command("HELLO", nicecmd.Run(greet), cobra.Command{
-		Use:   "nicecmd-example --name <name> [-w <weather>]",
+	cmd := nicecmd.RootCommand(nicecmd.Run(greet), cobra.Command{
+		Use:   "nicecmd-readme --name <name> [-w <weather>]",
 		Short: "It's just Cobra, but with no binding/setup required!",
 	}, Config{
 		Weather: "nice",
@@ -23,7 +23,7 @@ func main() {
 	}
 }
 
-func greet(cfg Config, cmd *cobra.Command, args []string) error {
+func greet(cfg *Config, cmd *cobra.Command, args []string) error {
 	cmd.Printf("Hello, %s!\n", cfg.Name)
 	cmd.Printf("The weather looks %s today!\n", cfg.Weather)
 	return nil

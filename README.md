@@ -7,9 +7,7 @@ programming with Cobra as-is seems just a bit too verbose for your taste.
 
 * Define your config and defaults with structs
 * This package uses reflection to pre-populate your `cobra.Command` with flags
-* Values are pre-set from environment variables before reading the command line
-* Supports all `spf13/pflag` (Cobra flag package) types, plus your own
-* Nothing is hidden, you're free to customize your commands, e.g. with Viper
+* Environment variable and dotenv-style config file support is automatic
 
 ```go
 package main
@@ -26,8 +24,8 @@ type Config struct {
 }
 
 func main() {
-	cmd := nicecmd.Command("HELLO", nicecmd.Run(greet), cobra.Command{
-		Use:   "nicecmd-example --name <name> [-w <weather>]",
+	cmd := nicecmd.RootCommand(nicecmd.Run(greet), cobra.Command{
+		Use:   "nicecmd-readme --name <name> [-w <weather>]",
 		Short: "It's just Cobra, but with no binding/setup required!",
 	}, Config{
 		Weather: "nice",
@@ -37,7 +35,7 @@ func main() {
 	}
 }
 
-func greet(cfg Config, cmd *cobra.Command, args []string) error {
+func greet(cfg *Config, cmd *cobra.Command, args []string) error {
 	cmd.Printf("Hello, %s!\n", cfg.Name)
 	cmd.Printf("The weather looks %s today!\n", cfg.Weather)
 	return nil
@@ -45,15 +43,27 @@ func greet(cfg Config, cmd *cobra.Command, args []string) error {
 ```
 
 ```text
-$ go run ./cmd/nicecmd-readme
-Error: required flag(s) "name" not set
+$ go run ./cmd/nicecmd-readme --help
+It's just Cobra, but with no binding/setup required!
+
 Usage:
-  nicecmd-example --name <name> [-w <weather>]
+  nicecmd-readme --name <name> [-w <weather>]
+  nicecmd-readme [command]
+
+Available Commands:
+  completion  Generate the autocompletion script for the specified shell
+  help        Help about any command
+  printenv    Print all environment variable values or defaults for this command
 
 Flags:
-  -h, --help             help for nicecmd-example
-      --name string      person to greet (required) (env HELLO_NAME)
-  -w, --weather string   how's the weather? (env HELLO_WEATHER) (default "nice")
+      --env-file stringArray   load dotenv file (repeat for multiple files)
+      --env-overwrite          give precedence to dotenv environment variables
+      --env-lax                ignore unbound environment variables
+  -h, --help                   help for nicecmd-readme
+      --name string            person to greet (required) (env NICECMD_README_NAME)
+  -w, --weather string         how's the weather? (env NICECMD_README_WEATHER) (default "nice")
+
+Use "nicecmd-readme [command] --help" for more information about a command.
 ```
 
 A more complete example with a sub-command is available in [cmd/nicecmd-fizzbuzz](cmd/nicecmd-fizzbuzz).
@@ -66,9 +76,9 @@ Principles and Patterns
 
 ### Immutable, type-safe, private configuration
 
-All configuration is passed to commands by value as copy. Default values are encoded in a type-safe
-way in the initial struct passed to `nicecmd.Command`. Only the command's run function gets access
-to the filled-out configuration.
+All configuration is passed to commands as struct. Default values are encoded in a type-safe way in
+the initial struct passed to `nicecmd.RootCommand`. Only the command's run function gets access to
+the filled-out configuration.
 
 ### Avoid global variables
 
@@ -77,49 +87,41 @@ register the command with some global `rootCmd`. I found that this quickly creat
 unrelated state of various subcommands. Likewise, you could access another command's variables,
 despite them being uninitialized.
 
-With `nicecmd` all configuration is in a struct, and you get an immutable copy of it to work with.
+With `nicecmd` all configuration is in a struct, and you get a private copy of it to work with.
 This avoids global variables for parameters.
-
-You can further avoid having a global (sub)command variables by consolidating all `cmd.AddCommand`
-calls in `main`, or separate per-command-package `NewCommand` methods, whatever floats your boat.
 
 ### Sub-commands
 
-Use `AddCommand` on any `cobra.Command`, regardless of whether it was created through nicecmd or
-directly through Cobra. However, note that nicecmd will:
-
-* Set `EnableTraverseRunHooks`: Persistent pre-run hooks of parents are always run
-* Set `TraverseChildren`: Parameters of the config struct passed to such hooks are set
-* Set `DisableFlagsInUseLine`: Your `Use` line will appear as-is in docs
+`nicecmd.SubCommand` will prefix the command's env vars with the parent command's path.
 
 You should structure sub-commands so that any shared configuration is a local (or persistent for
 convenience) variable on the parent command. For example, a log level would be shared for the
 entire application.
 
 You however cannot access the configuration of a parent command in the sub-command! Instead, modify
-the command context from the pre-run hook, e.g. to inject a logger:
+the command context from the setup hook, e.g. to inject a logger:
 
 ```go
 type RootConfig struct { LogLevel string }
 type SubConfig struct {}
 
-rootCmd := nicecmd.Command("FOO", nicecmd.PersistentPreRun(setup), cobra.Command{
+rootCmd := nicecmd.RootCommand(nicecmd.Setup(setup), cobra.Command{
 	Use:   "foo [--log-level <level>] <command>"
 	Short: "Foo will fizz your buzz"
 }, RootConfig{})
 
-rootCmd.AddCommand(&nicecmd.Command("FOO_BAR", nicecmd.Run(run), cobra.Command{
+nicecmd.SubCommand(rootCmd, nicecmd.Run(run), cobra.Command{
 	Use:   "bar"
 	Short: "Do the fizzing and buzzing"
-}, SubConfig{}))
+}, SubConfig{})
 
-func setup(cfg RootConfig, cmd *cobra.Command, args []string) error {
+func setup(cfg *RootConfig, cmd *cobra.Command, args []string) error {
 	// This always gets called before bar (or any other sub-command).
 	myLog := logutil.NewSLog(cfg.LogLevel)
 	cmd.SetContext(logutil.WithLogContext(cmd.Context(), myLog))
 }
 
-func run(cfg SubConfig, cmd *cobra.Command, args []string) error {
+func run(cfg *SubConfig, cmd *cobra.Command, args []string) error {
 	log := logutil.FromContext(cmd.Context())
 	log.Debug("fizz buzzing will commence") // but is omitted
 }
@@ -150,8 +152,8 @@ Whereas if `log-level` was not persistent, only the first command would work.
 ### Automatic naming
 
 This package will automatically derive a name for parameters and environment variables from the
-field name of your configuration structure. An optional prefix for environment variables (`HELLO_`
-in the example above) can be set. Names can be overridden via `param` and `env`:
+field name of your configuration structure. A prefix is derived from the first word of a command's
+`Use` line. Individual field names can be overridden via `param` and `env`:
 
 * `FooBarBaz string` is set via param `--foo-bar-baz` or env var `FOO_BAR_BAZ`
 * Use `param:"foo"` to change just the long form
@@ -183,10 +185,12 @@ type Config struct {
 ### Configuration files
 
 Viper (from the authors of Cobra) is a pretty nice configuration library, but comes with a bunch of
-dependencies. NiceCmd does not care about configuration at all: It gives you environment variables,
+dependencies. NiceCmd does not care about configuration files: It gives you environment variables,
 which is usually sufficient for configuring containerized applications.
 
-If you need more, you can set `nicecmd.Environment = false` and let Viper do the work. 
+Append `printenv` to a command to dump its configuration as dotenv file.
+
+If you need more, you can set `nicecmd.Environment = false` and let Viper handle everything.
 
 License
 -------

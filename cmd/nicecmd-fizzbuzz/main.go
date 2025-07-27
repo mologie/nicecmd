@@ -17,9 +17,9 @@ type MainConfig struct {
 }
 
 func main() {
-	cmd := nicecmd.Command("FIZZBUZZ", nicecmd.PersistentPreRun(setup), cobra.Command{
+	cmd := nicecmd.RootCommand(nicecmd.Setup(setup), cobra.Command{
 		Use:   "fizzbuzz [--log-level <level>] [--log-type <JSON|TEXT>]",
-		Short: "enterprise-grade fizzbuzz (nicecmd demo)",
+		Short: "Enterprise-grade fizzbuzz (nicecmd demo)",
 	}, MainConfig{
 		Log: logutil.Config{
 			Level:  logutil.Level(slog.LevelInfo),
@@ -27,14 +27,14 @@ func main() {
 		},
 	})
 
-	cmd.AddCommand(localcmd.NewCommand())
+	localcmd.Create(cmd)
 
 	if err := cmd.Execute(); err != nil {
 		os.Exit(1)
 	}
 }
 
-func setup(cfg MainConfig, cmd *cobra.Command, args []string) error {
+func setup(cfg *MainConfig, cmd *cobra.Command, args []string) error {
 	// This method demonstrates inheriting a log context to child commands.
 	// An application could also use slog.SetDefault(), but I'd rather have an
 	// invalid default handler and ensure that logging contexts are propagated
