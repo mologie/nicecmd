@@ -3,7 +3,9 @@ package nicecmd
 import (
 	"bufio"
 	"bytes"
+	"encoding"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"net"
 	"os"
 	"reflect"
@@ -49,13 +51,26 @@ type AllTypesConfig struct {
 	IPMask         net.IPMask        `expect:"--ip-mask ipMask * (env TEST_IP_MASK)" usage:"*"`
 	IPNet          net.IPNet         `expect:"--ip-net ipNet * (env TEST_IP_NET)" usage:"*"`
 	PFlagValue     pflagValue        `expect:"--pflag-value pflagValue * (env TEST_PFLAG_VALUE)" param:"pflag-value" env:"TEST_PFLAG_VALUE" usage:"*"`
+	TextValue      textValue         `expect:"--text-value * (env TEST_TEXT_VALUE)" param:"text-value" env:"TEST_TEXT_VALUE" usage:"*"`
 }
+
+var _ pflag.Value = &pflagValue{}
 
 type pflagValue struct{ val string }
 
 func (p *pflagValue) Set(s string) error { p.val = s; return nil }
 func (p *pflagValue) String() string     { return p.val }
 func (p *pflagValue) Type() string       { return "pflagValue" }
+
+var (
+	_ encoding.TextUnmarshaler = &textValue{}
+	_ encoding.TextMarshaler   = &textValue{}
+)
+
+type textValue struct{ val string }
+
+func (p *textValue) UnmarshalText(text []byte) error { p.val = string(text); return nil }
+func (p *textValue) MarshalText() ([]byte, error)    { return []byte(p.val), nil }
 
 func TestBindConfig_AllTypes(t *testing.T) {
 	// This test is pretty cheesy, (ab)using the fact that the FlagUsages() method accesses most of

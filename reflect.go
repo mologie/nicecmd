@@ -1,6 +1,7 @@
 package nicecmd
 
 import (
+	"encoding"
 	"fmt"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -186,6 +187,9 @@ func recurseStruct(paramPrefix, envPrefix string, parentOpts fieldOpts,
 				// A bunch of libraries, such as K8s, use pflag.Value for various types that also
 				// get used as flags with Cobra in frontend tools. This is a catch-all for those.
 				fs.VarP(flagValue, tags.name, tags.abbrev, tags.usage)
+			} else if decoder, encoder, ok := getTextDecoderEncoder(in); ok {
+				// pflag 1.0.7 adds support for anything that implements text marshalling
+				fs.TextVarP(decoder, tags.name, tags.abbrev, encoder, tags.usage)
 			} else if value.Kind() == reflect.Struct && value.Type().NumField() > 0 {
 				recurseStruct(tags.name+"-", tags.env+"_", opts, cmd, value, fail)
 				continue // do not process an environment variable
@@ -296,4 +300,13 @@ func (ft fieldTags) Opts() (opts fieldOpts) {
 
 func (ft fieldTags) HasEnv() bool {
 	return ft.env != "-"
+}
+
+func getTextDecoderEncoder(in any) (encoding.TextUnmarshaler, encoding.TextMarshaler, bool) {
+	if decoder, ok := in.(encoding.TextUnmarshaler); ok {
+		if encoder, ok := in.(encoding.TextMarshaler); ok {
+			return decoder, encoder, true
+		}
+	}
+	return nil, nil, false
 }
