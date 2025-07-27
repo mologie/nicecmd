@@ -3,7 +3,9 @@ package nicecmd
 import (
 	"bufio"
 	"bytes"
+	"encoding"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"net"
 	"os"
 	"reflect"
@@ -49,8 +51,10 @@ type AllTypesConfig struct {
 	IPMask         net.IPMask        `expect:"--ip-mask ipMask * (env TEST_IP_MASK)" usage:"*"`
 	IPNet          net.IPNet         `expect:"--ip-net ipNet * (env TEST_IP_NET)" usage:"*"`
 	PFlagValue     pflagValue        `expect:"--pflag-value pflagValue * (env TEST_PFLAG_VALUE)" param:"pflag-value" env:"TEST_PFLAG_VALUE" usage:"*"`
-	NiceValue      niceValue         `expect:"-n, --nice-value niceValue * (env TEST_NICE_VALUE)" param:"n" usage:"*"`
+	TextValue      textValue         `expect:"--text-value * (env TEST_TEXT_VALUE)" param:"text-value" env:"TEST_TEXT_VALUE" usage:"*"`
 }
+
+var _ pflag.Value = &pflagValue{}
 
 type pflagValue struct{ val string }
 
@@ -58,11 +62,15 @@ func (p *pflagValue) Set(s string) error { p.val = s; return nil }
 func (p *pflagValue) String() string     { return p.val }
 func (p *pflagValue) Type() string       { return "pflagValue" }
 
-type niceValue struct{ val string }
+var (
+	_ encoding.TextUnmarshaler = &textValue{}
+	_ encoding.TextMarshaler   = &textValue{}
+)
 
-func (c *niceValue) UnmarshalText(b []byte) error { c.val = string(b); return nil }
-func (c *niceValue) String() string               { return c.val }
-func (c *niceValue) CmdTypeDesc() string          { return "niceValue" }
+type textValue struct{ val string }
+
+func (p *textValue) UnmarshalText(text []byte) error { p.val = string(text); return nil }
+func (p *textValue) MarshalText() ([]byte, error)    { return []byte(p.val), nil }
 
 func TestBindConfig_AllTypes(t *testing.T) {
 	// This test is pretty cheesy, (ab)using the fact that the FlagUsages() method accesses most of
@@ -115,7 +123,7 @@ func TestBindConfig_Nested(t *testing.T) {
 		Level1 struct {
 			Outer  bool `usage:"*"`
 			Level2 struct {
-				Inner niceValue `usage:"*"`
+				Inner pflagValue `usage:"*"`
 			} `flag:"persistent"`
 		} `flag:"required"`
 	}
@@ -264,10 +272,7 @@ func TestBindConfig_BadEnvironment(t *testing.T) {
 	type EnvConfig struct {
 		Bad int
 	}
-	if err := os.Setenv("NICECMD_TEST_BAD", "value"); err != nil {
-		t.Errorf("setenv: %v", err)
-		return
-	}
+	_ = os.Setenv("NICECMD_TEST_BAD", "not-an-integer")
 	var cfg EnvConfig
 	cmd := &cobra.Command{}
 	buf := &bytes.Buffer{}
@@ -276,7 +281,8 @@ func TestBindConfig_BadEnvironment(t *testing.T) {
 		t.Error("expected BindConfig to fail")
 		return
 	}
-	if out := buf.String(); !strings.Contains(out, "NICECMD_TEST_BAD:") {
+	out := buf.String()
+	if !strings.Contains(out, `Error: environment variable "NICECMD_TEST_BAD":`) {
 		t.Errorf("expected BindConfig to print environment variable error, but got output: %v", out)
 	}
 }

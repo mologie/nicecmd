@@ -183,15 +183,13 @@ func recurseStruct(paramPrefix, envPrefix string, parentOpts fieldOpts,
 		case *net.IPNet:
 			fs.IPNetVarP(p, tags.name, tags.abbrev, *p, tags.usage)
 		default:
-			if pFlag, ok := in.(pflag.Value); ok {
+			if flagValue, ok := in.(pflag.Value); ok {
 				// A bunch of libraries, such as K8s, use pflag.Value for various types that also
 				// get used as flags with Cobra in frontend tools. This is a catch-all for those.
-				fs.VarP(pFlag, tags.name, tags.abbrev, tags.usage)
-			} else if textFlag, ok := in.(textUnmarshalledFlag); ok {
-				// This is our magic extension point, where any TextUnmarshaler+Stringer can become
-				// a flag if it additionally defines CmdTypeDesc() for help messages. The latter
-				// method also avoids accidentally flag-i-fying a type that is not meant to be one.
-				fs.VarP(newTextValue(textFlag), tags.name, tags.abbrev, tags.usage)
+				fs.VarP(flagValue, tags.name, tags.abbrev, tags.usage)
+			} else if decoder, encoder, ok := getTextDecoderEncoder(in); ok {
+				// pflag 1.0.7 adds support for anything that implements text marshalling
+				fs.TextVarP(decoder, tags.name, tags.abbrev, encoder, tags.usage)
 			} else if value.Kind() == reflect.Struct && value.Type().NumField() > 0 {
 				recurseStruct(tags.name+"-", tags.env+"_", opts, cmd, value, fail)
 				continue // do not process an environment variable
@@ -224,7 +222,7 @@ func recurseStruct(paramPrefix, envPrefix string, parentOpts fieldOpts,
 			if envVal := os.Getenv(tags.env); envVal != "" {
 				ansiColor := "32" // green
 				if err := param.Value.Set(envVal); err != nil {
-					cmd.Printf("Error: environment variable %s: %s\n", tags.env, err)
+					cmd.Printf("Error: environment variable %q: %s\n", tags.env, err)
 					*fail = true
 					ansiColor = "31" // red
 				}
@@ -304,25 +302,11 @@ func (ft fieldTags) HasEnv() bool {
 	return ft.env != "-"
 }
 
-type textUnmarshalledFlag interface {
-	encoding.TextUnmarshaler
-	String() string
-	CmdTypeDesc() string
-}
-
-// textValue implements pflag.Value for textUnmarshalledFlag.
-type textValue struct {
-	textUnmarshalledFlag
-}
-
-func newTextValue(p textUnmarshalledFlag) *textValue {
-	return &textValue{textUnmarshalledFlag: p}
-}
-
-func (d *textValue) Set(s string) error {
-	return d.UnmarshalText([]byte(s))
-}
-
-func (d *textValue) Type() string {
-	return d.CmdTypeDesc()
+func getTextDecoderEncoder(in any) (encoding.TextUnmarshaler, encoding.TextMarshaler, bool) {
+	if decoder, ok := in.(encoding.TextUnmarshaler); ok {
+		if encoder, ok := in.(encoding.TextMarshaler); ok {
+			return decoder, encoder, true
+		}
+	}
+	return nil, nil, false
 }
