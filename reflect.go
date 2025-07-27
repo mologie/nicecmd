@@ -266,21 +266,16 @@ func (opts fieldOpts) Or(other fieldOpts) (result fieldOpts) {
 }
 
 type fieldTags struct {
-	opts     []string
-	encoding string
 	name     string
 	abbrev   string
+	opts     []string
 	env      string
+	encoding string
 	usage    string
 }
 
 func getFieldTags(paramPrefix, envPrefix string, field reflect.StructField) (tags fieldTags) {
-	tags.opts = strings.Split(field.Tag.Get("flag"), ",")
-	tags.encoding = field.Tag.Get("encoding")
 	tags.name, tags.abbrev, _ = strings.Cut(field.Tag.Get("param"), ",")
-	tags.env = field.Tag.Get("env")
-	tags.usage = field.Tag.Get("usage")
-
 	if len(tags.name) == 1 {
 		if tags.abbrev != "" {
 			panic(fmt.Sprintf("param %q must be at least two characters", tags.name))
@@ -293,11 +288,20 @@ func getFieldTags(paramPrefix, envPrefix string, field reflect.StructField) (tag
 	} else {
 		tags.name = paramPrefix + tags.name
 	}
-
 	if len(tags.abbrev) > 1 {
 		panic(fmt.Sprintf("abbreviation %q for %q must be a single character", tags.abbrev, tags.name))
 	}
 
+	tags.opts = strings.Split(field.Tag.Get("flag"), ",")
+	for _, opt := range tags.opts {
+		switch opt {
+		default:
+			panic(fmt.Sprintf("unknown option %q for %q", opt, tags.name))
+		case "", optPersistent, optRequired:
+		}
+	}
+
+	tags.env = field.Tag.Get("env")
 	if tags.env == "" {
 		if envPrefix == "" {
 			tags.env = "-"
@@ -307,6 +311,15 @@ func getFieldTags(paramPrefix, envPrefix string, field reflect.StructField) (tag
 	} else if upper := screamingSnake(tags.env); tags.env != "-" && tags.env != upper {
 		panic(fmt.Sprintf("env tag %q for %q must be in SCREAMING_SNAKE_CASE (%q)", tags.env, tags.name, upper))
 	}
+
+	tags.encoding = field.Tag.Get("encoding")
+	switch tags.encoding {
+	default:
+		panic(fmt.Sprintf("unknown encoding %q for %q", tags.encoding, tags.name))
+	case "", encodingBase64, encodingCSV, encodingCount, encodingHex, encodingRaw:
+	}
+
+	tags.usage = field.Tag.Get("usage")
 
 	return
 }

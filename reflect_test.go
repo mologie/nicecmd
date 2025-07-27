@@ -192,14 +192,14 @@ func TestBindConfig_InvalidConfigTags(t *testing.T) {
 		conf  any
 	}{
 		{name: "bad non-pointer input", panic: "must be a struct pointer", conf: struct{}{}},
-		{name: "bad bytes encoding", panic: `got encoding "foo"`, conf: &struct {
-			Bytes []byte `encoding:"foo"`
+		{name: "bad bytes encoding", panic: `got encoding "count"`, conf: &struct {
+			Bytes []byte `encoding:"count"`
 		}{}},
-		{name: "bad int encoding", panic: `got encoding "foo"`, conf: &struct {
-			Int int `encoding:"foo"`
+		{name: "bad int encoding", panic: `got encoding "base64"`, conf: &struct {
+			Int int `encoding:"base64"`
 		}{}},
-		{name: "bad string slice encoding", panic: `got encoding "foo"`, conf: &struct {
-			String []string `encoding:"foo"`
+		{name: "bad string slice encoding", panic: `got encoding "base64"`, conf: &struct {
+			String []string `encoding:"base64"`
 		}{}},
 		{name: "raw string slice with env", panic: `requires env:"-"`, conf: &struct {
 			String []string `encoding:"raw"`
