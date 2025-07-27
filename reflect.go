@@ -207,7 +207,11 @@ func recurseStruct(
 		case *net.IPNet:
 			fs.IPNetVarP(p, tags.name, tags.abbrev, *p, tags.usage)
 		default:
-			if flagValue, ok := in.(pflag.Value); ok {
+			if customValue, ok := useCustomValue(value); ok {
+				// Give precedence to anything registered via RegisterType, any undesired parsing
+				// behavior of third-party libraries can be overridden.
+				fs.VarP(customValue, tags.name, tags.abbrev, tags.usage)
+			} else if flagValue, ok := in.(pflag.Value); ok {
 				// A bunch of libraries, such as K8s, use pflag.Value for various types that also
 				// get used as flags with Cobra in frontend tools. This is a catch-all for those.
 				fs.VarP(flagValue, tags.name, tags.abbrev, tags.usage)
