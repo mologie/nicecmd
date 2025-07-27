@@ -94,9 +94,10 @@ func recurseStruct(
 	paramPrefix, envPrefix string,
 	parentOpts fieldOpts,
 ) {
-	type_ := struct_.Type()
-	for i := 0; i < type_.NumField(); i++ {
-		tags := getFieldTags(paramPrefix, envPrefix, type_.Field(i))
+	structType := struct_.Type()
+	for i := 0; i < structType.NumField(); i++ {
+		fieldType := structType.Field(i)
+		tags := getFieldTags(paramPrefix, envPrefix, fieldType)
 		opts := tags.Opts().Or(parentOpts)
 		value := struct_.Field(i)
 
@@ -220,11 +221,15 @@ func recurseStruct(
 				fs.TextVarP(decoder, tags.name, tags.abbrev, encoder, tags.usage)
 			} else if value.Kind() == reflect.Struct && value.Type().NumField() > 0 {
 				// Recurse into sub-structs
-				var nextEnv string
-				if tags.HasEnv() {
-					nextEnv = tags.env + "_"
+				if fieldType.Anonymous {
+					recurseStruct(value, cmd, paramPrefix, envPrefix, opts)
+				} else {
+					var nextEnv string
+					if tags.HasEnv() {
+						nextEnv = tags.env + "_"
+					}
+					recurseStruct(value, cmd, tags.name+"-", nextEnv, opts)
 				}
-				recurseStruct(value, cmd, tags.name+"-", nextEnv, opts)
 				continue
 			} else {
 				panic(fmt.Sprintf("unsupported field type %T", p))

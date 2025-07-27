@@ -123,7 +123,11 @@ func TestBindConfig_AllTypes(t *testing.T) {
 }
 
 func TestBindConfig_Nested(t *testing.T) {
+	type Embed struct {
+		Embed int
+	}
 	var conf struct {
+		Embed
 		Level1 struct {
 			Outer  bool `usage:"*"`
 			Level2 struct {
@@ -153,8 +157,20 @@ func TestBindConfig_Nested(t *testing.T) {
 		t.Errorf(`inner value mismatch, expected "foo", got %q`, conf.Level1.Level2.Inner.val)
 	}
 
-	if env := pfs.Lookup("level1-level2-inner").Annotations[annotationEnv]; len(env) == 0 || env[0] != "TEST_LEVEL1_LEVEL2_INNER" {
-		t.Errorf("expected env var for inner to be TEST_LEVEL1_LEVEL2_INNER, got %q", env)
+	if flag := fs.Lookup("embed"); flag != nil {
+		if env := flag.Annotations[annotationEnv]; len(env) == 0 || env[0] != "TEST_EMBED" {
+			t.Errorf("expected env var for embed to be TEST_EMBED, got %q", env)
+		}
+	} else {
+		t.Error("expected embed flag to be present")
+	}
+
+	if flag := pfs.Lookup("level1-level2-inner"); flag != nil {
+		if env := flag.Annotations[annotationEnv]; len(env) == 0 || env[0] != "TEST_LEVEL1_LEVEL2_INNER" {
+			t.Errorf("expected env var for inner to be TEST_LEVEL1_LEVEL2_INNER, got %q", env)
+		}
+	} else {
+		t.Error("expected level1-level2-inner flag to be present")
 	}
 }
 
