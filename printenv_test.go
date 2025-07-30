@@ -11,6 +11,7 @@ func TestNewPrintEnvCmd_Nested(t *testing.T) {
 	type RootConfig struct {
 		Foo   int     `usage:"an integer"` // will not appear in printenv, relevant for root cmd's run only
 		Bar   float64 `flag:"persistent" usage:"a float, persistent"`
+		Pesky string  `flag:"persistent,required" usage:"blocks sub-commands"`
 		Delta time.Duration
 	}
 	runRoot := func(cfg *RootConfig, cmd *cobra.Command, args []string) error {
@@ -47,6 +48,9 @@ func TestNewPrintEnvCmd_Nested(t *testing.T) {
 
 # bar: a float, persistent (type: float64)
 NICECMD_TEST_BAR=42
+
+# pesky: blocks sub-commands (type: string) (required)
+# NICECMD_TEST_PESKY=
 `
 	if actual := buf.String(); actual != expected {
 		t.Errorf("output mismatch, actual: %v", actual)

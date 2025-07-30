@@ -18,7 +18,7 @@ func newPrintEnvCmd(outerCmd *cobra.Command, fullCommand string) *cobra.Command 
 	cmd.DisableFlagsInUseLine = true
 
 	//goland:noinspection GoUnhandledErrorResult for fmt.Fprintf
-	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+	printEnv := func(cmd *cobra.Command, args []string) {
 		omitQuotes := regexp.MustCompile(`^[a-zA-Z0-9_]*$`)
 		bashQuote := func(s string) string {
 			// note this merely cosmetics for the generated env file, not for security
@@ -66,7 +66,18 @@ func newPrintEnvCmd(outerCmd *cobra.Command, fullCommand string) *cobra.Command 
 				fmt.Fprintf(w, "# %s=%s\n", env, bashQuote(flag.DefValue))
 			}
 		})
+	}
 
+	cmd.PreRunE = func(cmd *cobra.Command, args []string) error {
+		// The help func will be run before argument validation when either --help is given, Run is
+		// absent, or ErrHelp is returned. However, --help won't call PreRunE. This is (ab)used
+		// here to provide an env var dump and exit successfully before flag validation happens.
+		cmd.SetHelpFunc(printEnv)
+		return pflag.ErrHelp
+	}
+
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		// This func exists to mark this command as runnable and have Cobra call PreRunE.
 		return nil
 	}
 
