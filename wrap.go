@@ -112,7 +112,7 @@ func opinionatedBindConfig[T any](parent *cobra.Command, hooks Hooks[T], cmd *co
 	cmd.Flags().SortFlags = false
 	cmd.PersistentFlags().SortFlags = false
 
-	// Default to the command's path as env prefix. Can be overridden by an additional option.
+	// Extend the parent command's prefix by default. This can be overridden via WithEnvPrefix.
 	// Note we can't use cmd.CommandPath() here because it may return cmd.DisplayName().
 	if Environment {
 		var commands []string
@@ -120,8 +120,17 @@ func opinionatedBindConfig[T any](parent *cobra.Command, hooks Hooks[T], cmd *co
 			commands = append([]string{parent.Name()}, commands...)
 		})
 		fullCommand := strings.Join(append(commands, cmd.Name()), " ")
-		defaultName := screamingSnake(fullCommand)
-		opts = append([]Option{WithEnvPrefix(defaultName)}, opts...)
+
+		var envPrefix string
+		if parent == nil {
+			envPrefix = screamingSnake(cmd.Name())
+		} else if parentPrefix, ok := parent.Annotations[annotationEnv]; ok {
+			envPrefix = parentPrefix + screamingSnake(cmd.Name())
+		} else {
+			envPrefix = screamingSnake(fullCommand)
+		}
+		opts = append([]Option{WithEnvPrefix(envPrefix)}, opts...)
+
 		cmd.AddCommand(newPrintEnvCmd(cmd, fullCommand))
 	}
 

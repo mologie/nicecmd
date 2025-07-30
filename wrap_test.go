@@ -202,7 +202,11 @@ func TestWrap_SubEnvVars(t *testing.T) {
 	// build tree: root -> sub1 -> sub2 -> sub3 -> leaf
 	// root wants --foo=foo
 	// each sub command wants --bar=i
-	rootCmd := RootCommand(Setup(trivialRun), cobra.Command{Use: "nicecmd-test"}, trivialConf{})
+	rootCmd := RootCommand(
+		Setup(trivialRun),
+		cobra.Command{Use: "nicecmd-test"},
+		trivialConf{},
+		WithEnvPrefix("NICECMD_CUSTOM"))
 	nextCmd := rootCmd
 	for i := 1; i <= 3; i++ {
 		nextCmd = SubCommand(nextCmd, SetupAndRun(checkBar(i), failOnRun), cobra.Command{
@@ -214,12 +218,12 @@ func TestWrap_SubEnvVars(t *testing.T) {
 	}, trivialConf{})
 
 	defer tempEnv(t, [][2]string{
-		{"NICECMD_TEST_FOO", "foo"},
-		{"NICECMD_TEST_SUB1_BAR", "1"},
-		{"NICECMD_TEST_SUB1_SUB2_BAR", "2"},
-		{"NICECMD_TEST_SUB1_SUB2_SUB3_BAR", "3"},
-		{"NICECMD_TEST_SUB1_SUB2_SUB3_LEAF_FOO", "foo"},
-		{"NICECMD_TEST_SUB1_SUB2_SUB3_LEAF_BAR", "4"},
+		{"NICECMD_CUSTOM_FOO", "foo"},
+		{"NICECMD_CUSTOM_SUB1_BAR", "1"},
+		{"NICECMD_CUSTOM_SUB1_SUB2_BAR", "2"},
+		{"NICECMD_CUSTOM_SUB1_SUB2_SUB3_BAR", "3"},
+		{"NICECMD_CUSTOM_SUB1_SUB2_SUB3_LEAF_FOO", "foo"},
+		{"NICECMD_CUSTOM_SUB1_SUB2_SUB3_LEAF_BAR", "4"},
 	})()
 	rootCmd.SetArgs([]string{"sub1", "sub2", "sub3", "leaf"})
 	if err := rootCmd.Execute(); err != nil {
