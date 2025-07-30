@@ -34,7 +34,7 @@ func trivialRun(cfg *trivialConf, cmd *cobra.Command, args []string) error {
 	}
 }
 
-func TestCommand_Execute(t *testing.T) {
+func TestWrap_Execute(t *testing.T) {
 	cmd := RootCommand(Run(trivialRun), cobra.Command{Use: "test"}, trivialConf{})
 	if reflect.ValueOf(cmd.Args).Pointer() != reflect.ValueOf(cobra.NoArgs).Pointer() {
 		t.Error("expected cmd to accept no args")
@@ -45,7 +45,7 @@ func TestCommand_Execute(t *testing.T) {
 	}
 }
 
-func TestCommand_EnvironmentFeaturesDisabled(t *testing.T) {
+func TestWrap_EnvironmentFeaturesDisabled(t *testing.T) {
 	if !Environment {
 		t.Fatal("environment features should be enabled by default")
 	}
@@ -71,7 +71,7 @@ func TestCommand_EnvironmentFeaturesDisabled(t *testing.T) {
 	}
 }
 
-func TestCommand_SubContextPropagation(t *testing.T) {
+func TestWrap_SubContextPropagation(t *testing.T) {
 	type contextKey struct{}
 
 	rootOtherCalled := 0
@@ -159,7 +159,7 @@ func (v *testSetCounter) Type() string {
 	return "testSetCounter"
 }
 
-func TestCommand_SubEnvAppliedOnce(t *testing.T) {
+func TestWrap_SubEnvAppliedOnce(t *testing.T) {
 	type CountConfig struct {
 		Count testSetCounter
 	}
@@ -184,7 +184,7 @@ func TestCommand_SubEnvAppliedOnce(t *testing.T) {
 	}
 }
 
-func TestCommand_SubEnvVars(t *testing.T) {
+func TestWrap_SubEnvVars(t *testing.T) {
 	checksOK := 0
 	checkBar := func(i int) Hook[trivialConf] {
 		return func(cfg *trivialConf, cmd *cobra.Command, args []string) error {
@@ -230,7 +230,7 @@ func TestCommand_SubEnvVars(t *testing.T) {
 	}
 }
 
-func TestCommand_DotEnv(t *testing.T) {
+func TestWrap_DotEnv(t *testing.T) {
 	tt := []struct {
 		name      string
 		overwrite bool
@@ -275,7 +275,7 @@ func TestCommand_DotEnv(t *testing.T) {
 	}
 }
 
-func TestCommand_MissingUsage(t *testing.T) {
+func TestWrap_MissingUsage(t *testing.T) {
 	defer func() {
 		if r := recover(); r == nil {
 			t.Error("expected panic")
@@ -286,7 +286,7 @@ func TestCommand_MissingUsage(t *testing.T) {
 	RootCommand(Run(trivialRun), cobra.Command{}, trivialConf{})
 }
 
-func TestCommand_UsageAndExitOnBadConfig(t *testing.T) {
+func TestWrap_UsageAndExitOnBadConfig(t *testing.T) {
 	defer tempEnv(t, [][2]string{{"NICECMD_TEST_BAR", "not-an-integer"}})()
 	buf := &bytes.Buffer{}
 	cmd := RootCommand(Run(trivialRun), cobra.Command{Use: "nicecmd-test"}, trivialConf{})
@@ -303,7 +303,7 @@ func TestCommand_UsageAndExitOnBadConfig(t *testing.T) {
 	}
 }
 
-func TestCommand_UnboundEnv(t *testing.T) {
+func TestWrap_UnboundEnv(t *testing.T) {
 	tt := []struct {
 		name string
 		args []string
