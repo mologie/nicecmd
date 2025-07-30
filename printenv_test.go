@@ -40,7 +40,7 @@ func TestNewPrintEnvCmd_Nested(t *testing.T) {
 	const expected = `# nicecmd-test sub
 
 # baz: a string (type: string)
-# NICECMD_TEST_SUB_BAZ=""
+# NICECMD_TEST_SUB_BAZ=
 
 # gamma (type: duration)
 # NICECMD_TEST_SUB_GAMMA=10m0s

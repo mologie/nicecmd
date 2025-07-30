@@ -19,7 +19,7 @@ func newPrintEnvCmd(outerCmd *cobra.Command, fullCommand string) *cobra.Command 
 
 	//goland:noinspection GoUnhandledErrorResult for fmt.Fprintf
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
-		omitQuotes := regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
+		omitQuotes := regexp.MustCompile(`^[a-zA-Z0-9_]*$`)
 		bashQuote := func(s string) string {
 			// note this merely cosmetics for the generated env file, not for security
 			if omitQuotes.MatchString(s) {
