@@ -52,3 +52,34 @@ NICECMD_TEST_BAR=42
 		t.Errorf("output mismatch, actual: %v", actual)
 	}
 }
+
+func TestNewPrintEnvCmd_Required(t *testing.T) {
+	type Config struct {
+		Required    bool `flag:"required"`
+		NotRequired int
+	}
+	run := func(cfg *Config, cmd *cobra.Command, args []string) error {
+		return nil
+	}
+	cmd := RootCommand(Run(run), cobra.Command{Use: "nicecmd-test"}, Config{})
+	if err := cmd.Flags().Set("not-required", "42"); err != nil {
+		t.Fatalf(`set flag "not-required": %v`, err)
+	}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetArgs([]string{"printenv"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("execute: %v", err)
+	}
+	const expected = `# nicecmd-test
+
+# required (type: bool) (required)
+# NICECMD_TEST_REQUIRED=false
+
+# not-required (type: int)
+NICECMD_TEST_NOT_REQUIRED=42
+`
+	if actual := buf.String(); actual != expected {
+		t.Errorf("output mismatch, actual: %v", actual)
+	}
+}

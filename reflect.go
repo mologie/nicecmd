@@ -245,10 +245,6 @@ func recurseStruct(
 			if err := cobra.MarkFlagRequired(fs, flag.Name); err != nil {
 				panic(fmt.Sprintf("failed to mark flag %q as required: %s", tags.name, err))
 			}
-			if len(flag.Usage) != 0 {
-				flag.Usage += " "
-			}
-			flag.Usage += "(required)"
 		}
 
 		if tags.HasEnv() {

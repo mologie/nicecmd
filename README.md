@@ -56,12 +56,12 @@ Available Commands:
   printenv    Print all environment variable values or defaults for this command
 
 Flags:
+      --name string            person to greet (env NICECMD_README_NAME) (required)
+  -w, --weather string         how's the weather? (env NICECMD_README_WEATHER) (default "nice")
       --env-file stringArray   load dotenv file (repeat for multiple files)
       --env-overwrite          give precedence to dotenv environment variables
       --env-lax                ignore unbound environment variables
   -h, --help                   help for nicecmd-readme
-      --name string            person to greet (required) (env NICECMD_README_NAME)
-  -w, --weather string         how's the weather? (env NICECMD_README_WEATHER) (default "nice")
 
 Use "nicecmd-readme [command] --help" for more information about a command.
 ```

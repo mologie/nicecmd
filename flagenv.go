@@ -50,12 +50,14 @@ func applyEnvToFlag(cmd *cobra.Command, errors *[]FlagError) func(*pflag.Flag) {
 		if _, ok := flag.Annotations[annotationProcessed]; ok {
 			return
 		}
+		if flag.Annotations == nil {
+			flag.Annotations = make(map[string][]string)
+		}
+		if len(flag.Usage) != 0 {
+			flag.Annotations[annotationUsage] = []string{flag.Usage} // backup for printenv
+		}
 		if annotations, ok := flag.Annotations[annotationEnv]; ok {
 			env := annotations[0]
-			if len(flag.Usage) != 0 {
-				flag.Annotations[annotationUsage] = []string{flag.Usage} // backup for printenv
-				flag.Usage += " "
-			}
 			if value, ok := os.LookupEnv(env); ok {
 				ansiColor := "32" // green
 				if err := flag.Value.Set(value); err != nil {
@@ -70,12 +72,25 @@ func applyEnvToFlag(cmd *cobra.Command, errors *[]FlagError) func(*pflag.Flag) {
 				} else {
 					flag.Changed = true
 				}
-				flag.Changed = true
-				flag.Usage += fmt.Sprintf("(\033[%smenv %s=%q\033[0m)", ansiColor, env, value)
+				spaceAppendf(&flag.Usage, "(\033[%smenv %s=%q\033[0m)", ansiColor, env, value)
 			} else {
-				flag.Usage += fmt.Sprintf("(env %s)", env)
+				spaceAppendf(&flag.Usage, "(env %s)", env)
 			}
 			flag.Annotations[annotationProcessed] = []string{}
 		}
+		if _, ok := flag.Annotations[cobra.BashCompOneRequiredFlag]; ok {
+			spaceAppend(&flag.Usage, "(required)")
+		}
 	}
+}
+
+func spaceAppend(s *string, suffix string) {
+	if len(*s) > 0 {
+		*s += " "
+	}
+	*s += suffix
+}
+
+func spaceAppendf(s *string, format string, a ...any) {
+	spaceAppend(s, fmt.Sprintf(format, a...))
 }
