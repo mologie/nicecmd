@@ -1,14 +1,17 @@
 package logutil
 
 import (
+	"github.com/spf13/pflag"
 	"log/slog"
 	"strings"
 )
 
+var _ pflag.Value = func() *Level { return nil }()
+
 type Level slog.Level
 
-func (l *Level) UnmarshalText(text []byte) error {
-	name := strings.ToUpper(string(text))
+func (l *Level) Set(s string) error {
+	name := strings.ToUpper(s)
 	if level, ok := NameLevels[name]; ok {
 		*l = Level(level)
 		return nil
@@ -25,7 +28,7 @@ func (l *Level) String() string {
 	}
 }
 
-func (l *Level) CmdTypeDesc() string {
+func (l *Level) Type() string {
 	return "level"
 }
 

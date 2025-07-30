@@ -5,7 +5,7 @@ import (
 )
 
 type Config struct {
-	Level  Level  `flag:"optional" usage:"TRACE, DEBUG, INFO, WARN, or ERROR"`
+	Level  Level  `usage:"TRACE, DEBUG, INFO, WARN, or ERROR"`
 	Format Format `usage:"TEXT or JSON"`
 }
 

@@ -2,28 +2,31 @@ package logutil
 
 import (
 	"fmt"
+	"github.com/spf13/pflag"
 	"log/slog"
 	"os"
 	"strings"
 )
 
+var _ pflag.Value = func() *Format { return nil }()
+
 type Format string
 
-func (f *Format) UnmarshalText(text []byte) error {
-	format := Format(strings.ToUpper(string(text)))
+func (f *Format) Set(s string) error {
+	format := Format(strings.ToUpper(s))
 	switch format {
 	case FormatText, FormatJSON:
 		*f = format
 		return nil
 	}
-	return fmt.Errorf("invalid log format text: %q", text)
+	return fmt.Errorf("invalid log format text: %q", s)
 }
 
 func (f *Format) String() string {
 	return string(*f)
 }
 
-func (f *Format) CmdTypeDesc() string {
+func (f *Format) Type() string {
 	return "format"
 }
 
