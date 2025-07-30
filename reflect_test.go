@@ -247,6 +247,19 @@ func TestBindConfig_InvalidConfigTags(t *testing.T) {
 	}
 }
 
+func TestBindConfig_DuplicateFlag(t *testing.T) {
+	type Foo struct {
+		Bar int
+	}
+	type Config struct {
+		Foo Foo
+		Bar Foo `param:"foo"`
+	}
+	expectPanic(t, "field Bar of struct Foo already exists in tree", func() {
+		BindConfig(&cobra.Command{}, &Config{})
+	})
+}
+
 func expectPanic(t *testing.T, message string, f func()) {
 	t.Helper()
 	defer func() {

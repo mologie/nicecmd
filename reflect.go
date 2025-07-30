@@ -96,10 +96,15 @@ func recurseStruct(
 ) {
 	structType := struct_.Type()
 	for i := 0; i < structType.NumField(); i++ {
-		fieldType := structType.Field(i)
-		tags := getFieldTags(paramPrefix, envPrefix, fieldType)
+		structField := structType.Field(i)
+		tags := getFieldTags(paramPrefix, envPrefix, structField)
 		opts := tags.Opts().Or(parentOpts)
 		value := struct_.Field(i)
+
+		if flag := cmd.Flag(tags.name); flag != nil {
+			panic(fmt.Sprintf("flag %q for field %v of struct %v already exists in tree",
+				tags.name, structField.Name, structType.Name()))
+		}
 
 		var fs *pflag.FlagSet
 		if opts.persistent {
@@ -221,7 +226,7 @@ func recurseStruct(
 				fs.TextVarP(decoder, tags.name, tags.abbrev, encoder, tags.usage)
 			} else if value.Kind() == reflect.Struct && value.Type().NumField() > 0 {
 				// Recurse into sub-structs
-				if fieldType.Anonymous {
+				if structField.Anonymous {
 					recurseStruct(value, cmd, paramPrefix, envPrefix, opts)
 				} else {
 					var nextEnv string
