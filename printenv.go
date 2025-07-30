@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"os"
 	"regexp"
 	"strconv"
 )
@@ -17,7 +16,9 @@ func newPrintEnvCmd(outerCmd *cobra.Command, fullCommand string) *cobra.Command 
 	}
 	cmd.DisableAutoGenTag = true
 	cmd.DisableFlagsInUseLine = true
-	cmd.RunE = func(*cobra.Command, []string) error {
+
+	//goland:noinspection GoUnhandledErrorResult for fmt.Fprintf
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		omitQuotes := regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
 		bashQuote := func(s string) string {
 			// note this merely cosmetics for the generated env file, not for security
@@ -28,44 +29,46 @@ func newPrintEnvCmd(outerCmd *cobra.Command, fullCommand string) *cobra.Command 
 			}
 		}
 
-		if cmd.HasFlags() {
-			_, _ = fmt.Fprintf(os.Stdout, "# %s\n", fullCommand)
-			outerCmd.Flags().VisitAll(func(flag *pflag.Flag) {
-				if flag.Hidden {
-					return
-				}
+		w := cmd.OutOrStdout()
+		fmt.Fprintf(w, "# %s\n", fullCommand)
 
-				annEnv := flag.Annotations[annotationEnv]
-				if len(annEnv) == 0 {
-					return
-				}
+		outerCmd.Flags().VisitAll(func(flag *pflag.Flag) {
+			if flag.Hidden {
+				return
+			}
 
-				annUsage := flag.Annotations[annotationUsage]
-				_, _ = fmt.Fprintf(os.Stdout, "\n# %s", flag.Name)
-				if len(annUsage) > 0 {
-					_, _ = fmt.Fprintf(os.Stdout, ": %s", annUsage[0])
-				}
-				if typeName := flag.Value.Type(); typeName != "" {
-					_, _ = fmt.Fprintf(os.Stdout, " (type: %s)", typeName)
-				}
-				if flag.Deprecated != "" {
-					_, _ = fmt.Fprintf(os.Stdout, " (deprecated: %s)", flag.Deprecated)
-				}
-				_, required := flag.Annotations[cobra.BashCompOneRequiredFlag]
-				if required {
-					_, _ = os.Stdout.WriteString(" (required)")
-				}
-				_, _ = os.Stdout.WriteString("\n")
+			annEnv := flag.Annotations[annotationEnv]
+			if len(annEnv) == 0 {
+				return
+			}
 
-				env := annEnv[0]
-				if flag.Changed {
-					_, _ = fmt.Fprintf(os.Stdout, "%s=%s\n", env, bashQuote(flag.Value.String()))
-				} else {
-					_, _ = fmt.Fprintf(os.Stdout, "# %s=%s\n", env, bashQuote(flag.DefValue))
-				}
-			})
-		}
+			annUsage := flag.Annotations[annotationUsage]
+			fmt.Fprintf(w, "\n# %s", flag.Name)
+			if len(annUsage) > 0 {
+				fmt.Fprintf(w, ": %s", annUsage[0])
+			}
+			if typeName := flag.Value.Type(); typeName != "" {
+				fmt.Fprintf(w, " (type: %s)", typeName)
+			}
+			if flag.Deprecated != "" {
+				fmt.Fprintf(w, " (deprecated: %s)", flag.Deprecated)
+			}
+			_, required := flag.Annotations[cobra.BashCompOneRequiredFlag]
+			if required {
+				fmt.Fprint(w, " (required)")
+			}
+			fmt.Fprintf(w, "\n")
+
+			env := annEnv[0]
+			if flag.Changed {
+				fmt.Fprintf(w, "%s=%s\n", env, bashQuote(flag.Value.String()))
+			} else {
+				fmt.Fprintf(w, "# %s=%s\n", env, bashQuote(flag.DefValue))
+			}
+		})
+
 		return nil
 	}
+
 	return cmd
 }
