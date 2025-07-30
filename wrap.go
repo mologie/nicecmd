@@ -60,6 +60,16 @@ func RootCommand[T any](hooks Hooks[T], cmd cobra.Command, cfg T, opts ...Option
 	return &cmd
 }
 
+// RootGroup is a convenience function to construct a command group at the application's root.
+// The command group does not take any special configuration.
+func RootGroup(cmdTmpl cobra.Command, sub ...func(*cobra.Command)) *cobra.Command {
+	cmd := RootCommand(Hooks[struct{}]{}, cmdTmpl, struct{}{})
+	for _, subCmd := range sub {
+		subCmd(cmd)
+	}
+	return cmd
+}
+
 func applyEnvToHelp(next func(cmd *cobra.Command, args []string)) func(cmd *cobra.Command, args []string) {
 	return func(cmd *cobra.Command, args []string) {
 		cmd.Flags().VisitAll(applyEnvToFlag(cmd, nil))
@@ -84,6 +94,15 @@ func SubCommand[T any](parent *cobra.Command, hooks Hooks[T], cmd cobra.Command,
 	}
 	opinionatedBindConfig(parent, hooks, &cmd, cfg, opts...)
 	return &cmd
+}
+
+// SubGroup is a convenience function to construct a command group without special configuration.
+func SubGroup(parent *cobra.Command, cmdTmpl cobra.Command, sub ...func(*cobra.Command)) *cobra.Command {
+	cmd := SubCommand(parent, Hooks[struct{}]{}, cmdTmpl, struct{}{})
+	for _, subCmd := range sub {
+		subCmd(cmd)
+	}
+	return cmd
 }
 
 func opinionatedBindConfig[T any](parent *cobra.Command, hooks Hooks[T], cmd *cobra.Command, cfg T, opts ...Option) {

@@ -35,11 +35,38 @@ func trivialRun(cfg *trivialConf, cmd *cobra.Command, args []string) error {
 }
 
 func TestWrap_Execute(t *testing.T) {
-	cmd := RootCommand(Run(trivialRun), cobra.Command{Use: "test"}, trivialConf{})
+	cmd := RootCommand(Run(trivialRun), cobra.Command{Use: "nicecmd-test"}, trivialConf{})
 	if reflect.ValueOf(cmd.Args).Pointer() != reflect.ValueOf(cobra.NoArgs).Pointer() {
 		t.Error("expected cmd to accept no args")
 	}
 	cmd.SetArgs([]string{"--foo", "foo"})
+	if err := cmd.Execute(); err != nil {
+		t.Errorf("execute: %v", err)
+	}
+}
+
+func TestWrap_Groups(t *testing.T) {
+	var subs []func(*cobra.Command)
+	for i := 1; i <= 3; i++ {
+		subs = append(subs, func(parent *cobra.Command) {
+			cmdTmpl := cobra.Command{Use: fmt.Sprintf("sub%d", i)}
+			SubGroup(parent, cmdTmpl, func(parent *cobra.Command) {
+				SubCommand(parent, Run(trivialRun), cobra.Command{Use: "leaf"}, trivialConf{})
+			})
+		})
+	}
+	cmd := RootGroup(cobra.Command{Use: "nicecmd-test"}, subs...)
+	subCmds := cmd.Commands()
+	ourCmds := 0
+	for _, subCmd := range subCmds {
+		if strings.HasPrefix(subCmd.Name(), "sub") {
+			ourCmds++
+		}
+	}
+	if ourCmds != 3 {
+		t.Errorf("expected 3 new sub-commands to be created, got %d", ourCmds)
+	}
+	cmd.SetArgs([]string{"sub1", "leaf", "--foo", "foo"})
 	if err := cmd.Execute(); err != nil {
 		t.Errorf("execute: %v", err)
 	}
