@@ -130,7 +130,7 @@ func recurseStruct(
 			case encodingHex:
 				fs.BytesHexVarP(p, tags.name, tags.abbrev, *p, tags.usage)
 			default:
-				panic(fmt.Sprintf(`expected encoding:"base64" or encoding:"hex" for bytes slice %q, got encoding %q`, tags.name, tags.encoding))
+				panic(fmt.Errorf(`expected encoding:"base64" or encoding:"hex" for bytes slice %q, got encoding %q`, tags.name, tags.encoding))
 			}
 		case *int:
 			switch tags.encoding {
@@ -139,10 +139,10 @@ func recurseStruct(
 			case encodingCount:
 				fs.CountVarP(p, tags.name, tags.abbrev, tags.usage)
 				if tags.HasEnv() {
-					panic(fmt.Sprintf(`count encoding for %q requires env:"-", cannot count env vars`, tags.name))
+					panic(fmt.Errorf(`count encoding for %q requires env:"-", cannot count env vars`, tags.name))
 				}
 			default:
-				panic(fmt.Sprintf(`expected no encoding or encoding:"count" for int %q, got encoding %q`, tags.name, tags.encoding))
+				panic(fmt.Errorf(`expected no encoding or encoding:"count" for int %q, got encoding %q`, tags.name, tags.encoding))
 			}
 		case *[]int:
 			fs.IntSliceVarP(p, tags.name, tags.abbrev, *p, tags.usage)
@@ -191,10 +191,10 @@ func recurseStruct(
 			case encodingRaw:
 				fs.StringArrayVarP(p, tags.name, tags.abbrev, *p, tags.usage)
 				if tags.HasEnv() {
-					panic(fmt.Sprintf(`encoding:"raw" for string slice %q requires env:"-"`, tags.name))
+					panic(fmt.Errorf(`encoding:"raw" for string slice %q requires env:"-"`, tags.name))
 				}
 			default:
-				panic(fmt.Sprintf(`expected encoding:"csv" or encoding:"raw" for string slice %q, got encoding %q`, tags.name, tags.encoding))
+				panic(fmt.Errorf(`expected encoding:"csv" or encoding:"raw" for string slice %q, got encoding %q`, tags.name, tags.encoding))
 			}
 		case *map[string]int:
 			fs.StringToIntVarP(p, tags.name, tags.abbrev, *p, tags.usage)
@@ -237,7 +237,7 @@ func recurseStruct(
 				}
 				continue
 			} else {
-				panic(fmt.Sprintf("unsupported field type %T", p))
+				panic(fmt.Errorf("unsupported field type %T", p))
 			}
 		}
 
@@ -248,13 +248,13 @@ func recurseStruct(
 
 		if opts.required {
 			if err := cobra.MarkFlagRequired(fs, flag.Name); err != nil {
-				panic(fmt.Sprintf("failed to mark flag %q as required: %s", tags.name, err))
+				panic(fmt.Errorf("failed to mark flag %q as required: %w", tags.name, err))
 			}
 		}
 
 		if tags.HasEnv() {
 			if err := fs.SetAnnotation(flag.Name, annotationEnv, []string{tags.env}); err != nil {
-				panic(fmt.Sprintf("failed to set env annotation for %q: %s", tags.name, err))
+				panic(fmt.Errorf("failed to set env annotation for %q: %w", tags.name, err))
 			}
 		}
 	}

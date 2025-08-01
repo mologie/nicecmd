@@ -261,14 +261,28 @@ func TestBindConfig_DuplicateFlag(t *testing.T) {
 }
 
 func expectPanic(t *testing.T, message string, f func()) {
-	t.Helper()
 	defer func() {
 		t.Helper()
-		if r := recover(); r == nil {
+
+		r := recover()
+		if r == nil {
 			t.Error("expected panic")
-		} else if !strings.Contains(r.(string), message) {
-			t.Errorf("unexpected panic: %v", r)
+		}
+
+		var s string
+		switch v := r.(type) {
+		case string:
+			s = v
+		case error:
+			s = v.Error()
+		default:
+			t.Errorf("unexpected panic type: %T", v)
+		}
+
+		if !strings.Contains(s, message) {
+			t.Errorf("unexpected panic message: %s", s)
 		}
 	}()
+	t.Helper()
 	f()
 }
