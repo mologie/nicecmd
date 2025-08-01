@@ -133,6 +133,9 @@ func TestBindConfig_Nested(t *testing.T) {
 			Level2 struct {
 				Inner pflagValue `usage:"*"`
 			} `flag:"persistent"`
+			Hidden struct {
+				Inner int
+			} `flag:"hidden" usage:"*"`
 		} `flag:"required"`
 	}
 	cmd := &cobra.Command{}
@@ -171,6 +174,14 @@ func TestBindConfig_Nested(t *testing.T) {
 		}
 	} else {
 		t.Error("expected level1-level2-inner flag to be present")
+	}
+
+	if flag := fs.Lookup("level1-hidden-inner"); flag != nil {
+		if !flag.Hidden {
+			t.Error("expected level1-hidden-inner flag to be hidden")
+		}
+	} else {
+		t.Error("expected level1-hidden-inner flag to be present")
 	}
 }
 

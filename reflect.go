@@ -20,6 +20,9 @@ const (
 
 	// optRequired marks a flag as required
 	optRequired = "required"
+
+	// optHidden hides a flag entirely from usage
+	optHidden = "hidden"
 )
 
 const (
@@ -252,6 +255,8 @@ func recurseStruct(
 			}
 		}
 
+		flag.Hidden = opts.hidden
+
 		if tags.HasEnv() {
 			if err := fs.SetAnnotation(flag.Name, annotationEnv, []string{tags.env}); err != nil {
 				panic(fmt.Errorf("failed to set env annotation for %q: %w", tags.name, err))
@@ -263,11 +268,13 @@ func recurseStruct(
 type fieldOpts struct {
 	persistent bool
 	required   bool
+	hidden     bool
 }
 
 func (opts fieldOpts) Or(other fieldOpts) (result fieldOpts) {
 	result.persistent = opts.persistent || other.persistent
 	result.required = opts.required || other.required
+	result.hidden = opts.hidden || other.hidden
 	return
 }
 
@@ -303,7 +310,7 @@ func getFieldTags(paramPrefix, envPrefix string, field reflect.StructField) (tag
 		switch opt {
 		default:
 			panic(fmt.Sprintf("unknown option %q for flag %q", opt, tags.name))
-		case "", optPersistent, optRequired:
+		case "", optPersistent, optRequired, optHidden:
 		}
 	}
 
@@ -337,6 +344,7 @@ func (ft fieldTags) hasOption(name string) bool {
 func (ft fieldTags) Opts() (opts fieldOpts) {
 	opts.persistent = ft.hasOption(optPersistent)
 	opts.required = ft.hasOption(optRequired)
+	opts.hidden = ft.hasOption(optHidden)
 	return
 }
 
