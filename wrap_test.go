@@ -334,6 +334,41 @@ func TestWrap_UsageAndExitOnBadConfig(t *testing.T) {
 	}
 }
 
+func TestWrap_SecretInUsage(t *testing.T) {
+	type SecretConfig struct {
+		Public string
+		Secret string `flag:"secret"`
+	}
+	defer tempEnv(t, [][2]string{
+		{"NICECMD_TEST_PUBLIC", "public-value"},
+		{"NICECMD_TEST_SECRET", "secret-value"},
+	})()
+	run := func(cfg *SecretConfig, cmd *cobra.Command, args []string) error {
+		if cfg.Public != "public-value" {
+			return fmt.Errorf(`expected cfg.Public="public-value", got %q`, cfg.Public)
+		}
+		if cfg.Secret != "secret-value" {
+			return fmt.Errorf(`expected cfg.Secret="secret-value", got %q`, cfg.Secret)
+		}
+		return nil
+	}
+	cmd := RootCommand(Run(run), cobra.Command{Use: "nicecmd-test"}, SecretConfig{})
+	cmd.SetArgs([]string{})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("execute: %v", err)
+	}
+	usage := cmd.UsageString()
+	if !strings.Contains(usage, "public-value") {
+		t.Errorf("expected usage to contain public value, got: %s", usage)
+	}
+	if !strings.Contains(usage, "NICECMD_TEST_SECRET=<secret>") {
+		t.Errorf("expected usage to contain env var NICECMD_TEST_SECRET, got: %s", usage)
+	}
+	if strings.Contains(usage, "secret-value") {
+		t.Errorf("expected usage to not contain secret value, got: %s", usage)
+	}
+}
+
 func TestWrap_UnboundEnv(t *testing.T) {
 	tt := []struct {
 		name string

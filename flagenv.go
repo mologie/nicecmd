@@ -5,6 +5,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -72,7 +73,12 @@ func applyEnvToFlag(cmd *cobra.Command, errors *[]FlagError) func(*pflag.Flag) {
 				} else {
 					flag.Changed = true
 				}
-				spaceAppendf(&flag.Usage, "(\033[%smenv %s=%q\033[0m)", ansiColor, env, value)
+				if _, isSecret := flag.Annotations[annotationSecret]; isSecret {
+					value = "<secret>"
+				} else {
+					value = strconv.Quote(value)
+				}
+				spaceAppendf(&flag.Usage, "(\033[%smenv %s=%s\033[0m)", ansiColor, env, value)
 			} else {
 				spaceAppendf(&flag.Usage, "(env %s)", env)
 			}

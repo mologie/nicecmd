@@ -23,6 +23,9 @@ const (
 
 	// optHidden hides a flag entirely from usage
 	optHidden = "hidden"
+
+	// optSecret marks a flag's value as secret, which hides only its value from usage lines
+	optSecret = "secret"
 )
 
 const (
@@ -36,6 +39,9 @@ const (
 const (
 	// annotationEnv stores the environment variable's name to which the flag is bound.
 	annotationEnv = "nicecmd_env"
+
+	// annotationSecret is set for flags that have optSecret set
+	annotationSecret = "nicecmd_secret"
 )
 
 type config struct {
@@ -257,6 +263,12 @@ func recurseStruct(
 
 		flag.Hidden = opts.hidden
 
+		if opts.secret {
+			if err := fs.SetAnnotation(flag.Name, annotationSecret, []string{"true"}); err != nil {
+				panic(fmt.Errorf("failed to set secret annotation for %q: %w", tags.name, err))
+			}
+		}
+
 		if tags.HasEnv() {
 			if err := fs.SetAnnotation(flag.Name, annotationEnv, []string{tags.env}); err != nil {
 				panic(fmt.Errorf("failed to set env annotation for %q: %w", tags.name, err))
@@ -269,12 +281,14 @@ type fieldOpts struct {
 	persistent bool
 	required   bool
 	hidden     bool
+	secret     bool
 }
 
 func (opts fieldOpts) Or(other fieldOpts) (result fieldOpts) {
 	result.persistent = opts.persistent || other.persistent
 	result.required = opts.required || other.required
 	result.hidden = opts.hidden || other.hidden
+	result.secret = opts.secret || other.secret
 	return
 }
 
@@ -310,7 +324,7 @@ func getFieldTags(paramPrefix, envPrefix string, field reflect.StructField) (tag
 		switch opt {
 		default:
 			panic(fmt.Sprintf("unknown option %q for flag %q", opt, tags.name))
-		case "", optPersistent, optRequired, optHidden:
+		case "", optPersistent, optRequired, optHidden, optSecret:
 		}
 	}
 
@@ -345,6 +359,7 @@ func (ft fieldTags) Opts() (opts fieldOpts) {
 	opts.persistent = ft.hasOption(optPersistent)
 	opts.required = ft.hasOption(optRequired)
 	opts.hidden = ft.hasOption(optHidden)
+	opts.secret = ft.hasOption(optSecret)
 	return
 }
 
