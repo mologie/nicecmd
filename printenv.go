@@ -2,10 +2,11 @@ package nicecmd
 
 import (
 	"fmt"
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 	"regexp"
 	"strconv"
+
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 func newPrintEnvCmd(outerCmd *cobra.Command, fullCommand string) *cobra.Command {

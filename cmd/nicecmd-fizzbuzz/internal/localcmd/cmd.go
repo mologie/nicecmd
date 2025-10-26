@@ -2,12 +2,13 @@ package localcmd
 
 import (
 	"fmt"
-	"github.com/mologie/nicecmd"
-	"github.com/mologie/nicecmd/cmd/nicecmd-fizzbuzz/internal/logutil"
-	"github.com/spf13/cobra"
 	"io"
 	"log/slog"
 	"time"
+
+	"github.com/mologie/nicecmd"
+	"github.com/mologie/nicecmd/cmd/nicecmd-fizzbuzz/internal/logutil"
+	"github.com/spf13/cobra"
 )
 
 type Config struct {

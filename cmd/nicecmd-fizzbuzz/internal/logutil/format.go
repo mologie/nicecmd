@@ -2,10 +2,11 @@ package logutil
 
 import (
 	"fmt"
-	"github.com/spf13/pflag"
 	"log/slog"
 	"os"
 	"strings"
+
+	"github.com/spf13/pflag"
 )
 
 var _ pflag.Value = func() *Format { return nil }()

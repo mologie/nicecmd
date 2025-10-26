@@ -2,6 +2,7 @@ package nicecmd
 
 import (
 	"fmt"
+
 	"github.com/joho/godotenv"
 	"github.com/spf13/cobra"
 )

@@ -2,12 +2,13 @@ package nicecmd
 
 import (
 	"fmt"
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 	"maps"
 	"os"
 	"slices"
 	"strings"
+
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 type ErrUnboundEnvironment struct {

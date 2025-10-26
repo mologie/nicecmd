@@ -1,10 +1,11 @@
 package nicecmd
 
 import (
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 	"reflect"
 	"testing"
+
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 func TestTypeReg_RegisterUnregister(t *testing.T) {

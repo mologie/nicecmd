@@ -1,9 +1,10 @@
 package logutil
 
 import (
-	"github.com/spf13/pflag"
 	"log/slog"
 	"strings"
+
+	"github.com/spf13/pflag"
 )
 
 var _ pflag.Value = func() *Level { return nil }()

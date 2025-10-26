@@ -4,12 +4,13 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
+	"os"
+
 	"github.com/mologie/nicecmd"
 	"github.com/mologie/nicecmd/cmd/nicecmd-fizzbuzz/internal/localcmd"
 	"github.com/mologie/nicecmd/cmd/nicecmd-fizzbuzz/internal/logutil"
 	"github.com/spf13/cobra"
-	"log/slog"
-	"os"
 )
 
 type MainConfig struct {

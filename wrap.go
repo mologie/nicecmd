@@ -1,8 +1,9 @@
 package nicecmd
 
 import (
-	"github.com/spf13/cobra"
 	"strings"
+
+	"github.com/spf13/cobra"
 )
 
 // Environment determines whether environment variables are bound and processed.

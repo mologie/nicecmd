@@ -4,14 +4,15 @@ import (
 	"bufio"
 	"encoding"
 	"fmt"
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 	"net"
 	"reflect"
 	"regexp"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 type AllTypesConfig struct {

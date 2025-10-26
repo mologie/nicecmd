@@ -1,9 +1,10 @@
 package main
 
 import (
+	"os"
+
 	"github.com/mologie/nicecmd"
 	"github.com/spf13/cobra"
-	"os"
 )
 
 type Config struct {

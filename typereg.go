@@ -1,8 +1,9 @@
 package nicecmd
 
 import (
-	"github.com/spf13/pflag"
 	"reflect"
+
+	"github.com/spf13/pflag"
 )
 
 type typeReg struct {

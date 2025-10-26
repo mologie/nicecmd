@@ -3,13 +3,14 @@ package nicecmd
 import (
 	"encoding"
 	"fmt"
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 	"net"
 	"reflect"
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 const (

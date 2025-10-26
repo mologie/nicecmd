@@ -2,9 +2,10 @@ package nicecmd
 
 import (
 	"bytes"
-	"github.com/spf13/cobra"
 	"testing"
 	"time"
+
+	"github.com/spf13/cobra"
 )
 
 func TestNewPrintEnvCmd_Nested(t *testing.T) {
