@@ -6,6 +6,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
+func init() {
+	// We'd want all parent hooks to run by default.
+	// This is required for environment variable processing and dotenv support.
+	cobra.EnableTraverseRunHooks = true
+}
+
 // Environment determines whether environment variables are bound and processed.
 // Change this globally if you use another library for environment variables, e.g. Viper.
 var Environment = true
@@ -21,12 +27,6 @@ type Hooks[T any] struct {
 	Run               Hook[T]
 	PostRun           Hook[T]
 	PersistentPostRun Hook[T]
-}
-
-func init() {
-	// We'd want all parent hooks to run by default.
-	// This is required for environment variable processing and dotenv support.
-	cobra.EnableTraverseRunHooks = true
 }
 
 // Setup is a convenience function to create Hooks with only the PersistentPreRun function set.
